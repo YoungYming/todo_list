@@ -109,6 +109,11 @@
       log('modal close');
     }
 
+    // 初始化时强制关闭弹窗，避免浏览器恢复旧 UI 状态导致 taskId 丢失
+    closeModal();
+    if (taskIdInput) taskIdInput.value = '';
+    if (modal && modal.dataset) modal.dataset.taskId = '';
+
     // 完成按钮
     var btns = document.querySelectorAll('.btn-complete');
     btns.forEach(function (btn) {
@@ -138,14 +143,11 @@
     }
     syncMinutes(false);
 
-    // 任务类型：委托 + 逐个绑定（双保险）
+    // 任务类型：事件委托（支持多选）
     if (taskTypeChips) {
       taskTypeChips.addEventListener('click', function (e) {
         var btn = e.target.closest('.task-type-chip');
         if (btn) selectTaskType(btn);
-      });
-      taskTypeChips.querySelectorAll('.task-type-chip').forEach(function (chip) {
-        chip.addEventListener('click', function () { selectTaskType(chip); });
       });
     }
 
@@ -162,15 +164,7 @@
       var taskId = taskIdInput ? String(taskIdInput.value || '').trim() : '';
       if (!taskId && modal && modal.dataset) taskId = String(modal.dataset.taskId || '').trim();
       if (!taskId) {
-        var firstBtn = document.querySelector('.btn-complete[data-task-id]');
-        if (firstBtn) {
-          taskId = String(firstBtn.getAttribute('data-task-id') || '').trim();
-          if (taskIdInput) taskIdInput.value = taskId;
-          if (modal && modal.dataset) modal.dataset.taskId = taskId;
-        }
-      }
-      if (!taskId) {
-        toast('任务 ID 无效：请先点“完成”按钮后再提交', 'error');
+        toast('任务 ID 无效：请先点对应任务右侧“完成”再提交', 'error');
         return;
       }
 
