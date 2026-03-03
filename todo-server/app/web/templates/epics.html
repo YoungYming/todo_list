@@ -3,7 +3,7 @@
 {% block content %}
 <header class="page-header">
   <h1 class="page-header__title">Epic 看板</h1>
-  <p class="page-header__meta">进行中 / 已完成 / 已过期未完成 + 今日需完成白板</p>
+  <p class="page-header__meta">进行中 / 已完成 / 已过期未完成（拖拽：左侧加白板，右侧删除白板）</p>
 </header>
 
 <section class="section-create">
@@ -37,28 +37,65 @@
 
 <section class="kanban" id="epic-kanban">
   <div class="kanban-col" data-col="in_progress">
-    <h3>进行中</h3>
+    <div class="kanban-col__head"><h3>进行中</h3></div>
+    <div class="kanban-side kanban-side--left">今日需做</div>
+    <div class="kanban-side kanban-side--right">删除白板</div>
     <div class="kanban-drop" id="col-in-progress"></div>
   </div>
   <div class="kanban-col" data-col="done">
-    <h3>已完成</h3>
+    <div class="kanban-col__head"><h3>已完成</h3></div>
+    <div class="kanban-side kanban-side--left">今日需做</div>
+    <div class="kanban-side kanban-side--right">删除白板</div>
     <div class="kanban-drop" id="col-done"></div>
   </div>
   <div class="kanban-col" data-col="overdue">
-    <h3>已过期未完成</h3>
+    <div class="kanban-col__head"><h3>已过期未完成</h3></div>
+    <div class="kanban-side kanban-side--left">今日需做</div>
+    <div class="kanban-side kanban-side--right">删除白板</div>
     <div class="kanban-drop" id="col-overdue"></div>
   </div>
 </section>
 
 <section class="card">
-  <div class="card__header">今日需完成白板（可从任意列拖入）</div>
+  <div class="card__header">今日需完成白板（卡片可拖入；拖到任意列右侧可移除）</div>
   <div class="card__body">
     <div id="today-board" class="kanban-drop"></div>
   </div>
 </section>
+
+<div id="epic-action-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="epic-action-title">
+  <div class="modal-overlay__backdrop" id="epic-action-backdrop" aria-hidden="true"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h2 id="epic-action-title" class="modal__title">Epic 操作确认</h2>
+      <p id="epic-action-subtitle" class="modal__subtitle"></p>
+    </div>
+    <div class="modal__body">
+      <form id="epic-action-form">
+        <input type="hidden" id="epic-action-id" />
+        <div class="form-group" id="epic-action-due-wrap" hidden>
+          <label class="form-group__label" for="epic-action-due">新的截止日期</label>
+          <input class="form-group__input" type="date" id="epic-action-due" />
+        </div>
+        <div class="form-group" id="epic-action-desc-wrap" hidden>
+          <label class="form-group__label" for="epic-action-desc">新的描述（可选）</label>
+          <textarea class="form-group__textarea" id="epic-action-desc" rows="3"></textarea>
+        </div>
+        <div class="form-group" id="epic-action-note-wrap" hidden>
+          <label class="form-group__label" for="epic-action-note">完成说明（可选）</label>
+          <input class="form-group__input" type="text" id="epic-action-note" />
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--secondary" id="epic-action-cancel">取消</button>
+          <button type="submit" class="btn btn--primary" id="epic-action-confirm">确认</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
 {% endblock %}
 
 {% block scripts %}
 <script>window.EPICS_DATA = {{ epics | tojson }};</script>
-<script src="/static/epics.js?v=20260303-1"></script>
+<script src="/static/epics.js?v=20260303-2"></script>
 {% endblock %}

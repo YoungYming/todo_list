@@ -2,6 +2,7 @@
   var base = (typeof window.API_BASE !== 'undefined' ? window.API_BASE : '') || '';
   var epics = Array.isArray(window.EPICS_DATA) ? window.EPICS_DATA.slice() : [];
   var boardKey = 'todo_today_board_epics';
+  var DRAG_SIDE_PX = 72;
 
   function toast(msg, type) {
     if (window.todoToast) window.todoToast(msg, type || 'info');
@@ -12,7 +13,10 @@
     return res.text().then(function (text) {
       try {
         var j = text ? JSON.parse(text) : {};
-        if (j.detail) return Promise.reject(new Error(Array.isArray(j.detail) ? j.detail.map(function (d) { return d.msg || d; }).join(', ') : String(j.detail)));
+        if (j.detail) {
+          var d = Array.isArray(j.detail) ? j.detail.map(function (x) { return x.msg || x; }).join(', ') : String(j.detail);
+          return Promise.reject(new Error(d));
+        }
       } catch (_) {}
       return Promise.reject(new Error(fallback || '请求失败'));
     });
@@ -44,6 +48,17 @@
     localStorage.setItem(boardKey, JSON.stringify(ids));
   }
 
+  function addBoard(id) {
+    var ids = getBoardIds();
+    if (ids.indexOf(id) < 0) ids.push(id);
+    setBoardIds(ids);
+  }
+
+  function removeBoard(id) {
+    var ids = getBoardIds().filter(function (x) { return x !== id; });
+    setBoardIds(ids);
+  }
+
   function renderCard(epic) {
     var el = document.createElement('div');
     el.className = 'epic-card';
@@ -54,10 +69,11 @@
       '<div class="epic-card__title">' + epic.title + '</div>' +
       '<div class="epic-card__meta">进度 ' + Math.round((epic.progress || 0) * 100) + '% ' + (epic.due_date ? ('· 截止 ' + epic.due_date) : '') + '</div>' +
       '<div class="form-actions" style="margin-top:8px">' +
-        '<a class="btn btn--secondary" href="/app/epics/' + epic.id + '">详情</a>' +
+      '<a class="btn btn--secondary" href="/app/epics/' + epic.id + '">详情</a>' +
       '</div>';
     el.addEventListener('dragstart', function (e) {
       e.dataTransfer.setData('text/plain', String(epic.id));
+      e.dataTransfer.effectAllowed = 'move';
     });
     return el;
   }
@@ -77,21 +93,7 @@
       else if (c === 'overdue' && colOver) colOver.appendChild(card);
       else if (colIn) colIn.appendChild(card);
 
-      if (boardIds.indexOf(e.id) >= 0 && board) {
-        board.appendChild(renderCard(e));
-      }
-    });
-  }
-
-  function bindDropzone(el, onDrop) {
-    if (!el) return;
-    el.addEventListener('dragover', function (e) { e.preventDefault(); el.classList.add('drag-over'); });
-    el.addEventListener('dragleave', function () { el.classList.remove('drag-over'); });
-    el.addEventListener('drop', function (e) {
-      e.preventDefault();
-      el.classList.remove('drag-over');
-      var id = parseInt(e.dataTransfer.getData('text/plain'), 10);
-      if (id) onDrop(id);
+      if (boardIds.indexOf(e.id) >= 0 && board) board.appendChild(renderCard(e));
     });
   }
 
@@ -107,32 +109,172 @@
     });
   }
 
-  function bindBoardInteractions() {
-    bindDropzone(document.getElementById('today-board'), function (id) {
-      var ids = getBoardIds();
-      if (ids.indexOf(id) < 0) ids.push(id);
-      setBoardIds(ids);
-      toast('已加入今日需完成白板', 'success');
-      rerender();
+  function applyEpicUpdate(updated) {
+    var idx = epics.findIndex(function (x) { return x.id === updated.id; });
+    if (idx >= 0) epics[idx] = updated;
+    rerender();
+  }
+
+  // ===== modal =====
+  var modal = document.getElementById('epic-action-modal');
+  var modalForm = document.getElementById('epic-action-form');
+  var modalTitle = document.getElementById('epic-action-title');
+  var modalSubtitle = document.getElementById('epic-action-subtitle');
+  var modalId = document.getElementById('epic-action-id');
+  var dueWrap = document.getElementById('epic-action-due-wrap');
+  var dueInput = document.getElementById('epic-action-due');
+  var descWrap = document.getElementById('epic-action-desc-wrap');
+  var descInput = document.getElementById('epic-action-desc');
+  var noteWrap = document.getElementById('epic-action-note-wrap');
+  var noteInput = document.getElementById('epic-action-note');
+  var cancelBtn = document.getElementById('epic-action-cancel');
+  var backdrop = document.getElementById('epic-action-backdrop');
+
+  var pendingResolve = null;
+
+  function closeActionModal(result) {
+    if (modal) modal.setAttribute('hidden', '');
+    if (pendingResolve) pendingResolve(result || null);
+    pendingResolve = null;
+  }
+
+  function openActionModal(opts) {
+    if (!modal || !modalForm) return Promise.resolve(null);
+    modalTitle.textContent = opts.title || '操作确认';
+    modalSubtitle.textContent = opts.subtitle || '';
+    modalId.value = String(opts.epicId || '');
+
+    dueWrap.hidden = !opts.needDue;
+    descWrap.hidden = !opts.needDesc;
+    noteWrap.hidden = !opts.needNote;
+
+    dueInput.value = opts.defaultDue || '';
+    descInput.value = opts.defaultDesc || '';
+    noteInput.value = '';
+
+    modal.removeAttribute('hidden');
+
+    return new Promise(function (resolve) {
+      pendingResolve = resolve;
+    });
+  }
+
+  if (cancelBtn) cancelBtn.addEventListener('click', function () { closeActionModal(null); });
+  if (backdrop) backdrop.addEventListener('click', function () { closeActionModal(null); });
+
+  if (modalForm) {
+    modalForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      closeActionModal({
+        epicId: parseInt(modalId.value, 10),
+        due_date: dueInput.value || null,
+        description: descInput.value || null,
+        note: noteInput.value || null
+      });
+    });
+  }
+
+  function handleDropByColumn(epic, targetCol) {
+    var from = category(epic);
+
+    if (targetCol === 'in_progress' && from === 'overdue') {
+      return openActionModal({
+        title: '移回进行中',
+        subtitle: '请设置新的截止日期（必填），可修改描述。',
+        epicId: epic.id,
+        needDue: true,
+        needDesc: true,
+        defaultDue: epic.due_date || '',
+        defaultDesc: epic.description || ''
+      }).then(function (ret) {
+        if (!ret) return;
+        if (!ret.due_date) return toast('请填写新的截止日期', 'error');
+        return patchEpic(epic.id, { due_date: ret.due_date, description: ret.description || epic.description })
+          .then(function (updated) {
+            toast('已移回进行中', 'success');
+            applyEpicUpdate(updated);
+          })
+          .catch(function (err) { toast(err.message, 'error'); });
+      });
+    }
+
+    if (targetCol === 'done' && from !== 'done') {
+      return openActionModal({
+        title: '标记为已完成',
+        subtitle: '确认将该 Epic 移动到已完成？可填写完成说明。',
+        epicId: epic.id,
+        needNote: true
+      }).then(function (ret) {
+        if (!ret) return;
+        return patchEpic(epic.id, { progress: 1.0 })
+          .then(function (updated) {
+            toast('Epic 已标记完成', 'success');
+            applyEpicUpdate(updated);
+          })
+          .catch(function (err) { toast(err.message, 'error'); });
+      });
+    }
+
+    if (targetCol === 'overdue') {
+      toast('过期状态由截止日期自动判定', 'info');
+      return;
+    }
+  }
+
+  function clearIntent(col) {
+    col.classList.remove('drag-left', 'drag-right', 'drag-center');
+    col.dataset.intent = '';
+  }
+
+  function bindColumnDnD(col) {
+    if (!col) return;
+
+    col.addEventListener('dragover', function (e) {
+      e.preventDefault();
+      var rect = col.getBoundingClientRect();
+      var x = e.clientX - rect.left;
+      var intent = 'center';
+      if (x <= DRAG_SIDE_PX) intent = 'left';
+      else if (x >= rect.width - DRAG_SIDE_PX) intent = 'right';
+
+      clearIntent(col);
+      col.classList.add('drag-' + intent);
+      col.dataset.intent = intent;
     });
 
-    bindDropzone(document.getElementById('col-in-progress'), function (id) {
-      var e = epics.find(function (x) { return x.id === id; });
-      if (!e) return;
-      var needUpdate = category(e) === 'overdue';
-      if (!needUpdate) return;
+    col.addEventListener('dragleave', function () { clearIntent(col); });
 
-      var newDue = prompt('该 Epic 已过期。请输入新的截止日期（YYYY-MM-DD）', e.due_date || '');
-      if (!newDue) return;
-      var newDesc = prompt('可选：更新描述（留空则保留原描述）', e.description || '') || e.description;
-      patchEpic(id, { due_date: newDue, description: newDesc })
-        .then(function (updated) {
-          var idx = epics.findIndex(function (x) { return x.id === id; });
-          if (idx >= 0) epics[idx] = updated;
-          toast('已移回进行中', 'success');
+    col.addEventListener('drop', function (e) {
+      e.preventDefault();
+      var id = parseInt(e.dataTransfer.getData('text/plain'), 10);
+      clearIntent(col);
+      if (!id) return;
+      var epic = epics.find(function (x) { return x.id === id; });
+      if (!epic) return;
+
+      var intent = col.dataset.intent || 'center';
+      if (intent === 'left') {
+        addBoard(id);
+        rerender();
+        toast('已加入今日需做白板', 'success');
+        return;
+      }
+      if (intent === 'right') {
+        if (getBoardIds().indexOf(id) < 0) return toast('该卡片不在白板中', 'info');
+        openActionModal({
+          title: '从白板移除',
+          subtitle: '确认将该卡片从今日白板中删除吗？',
+          epicId: id
+        }).then(function (ret) {
+          if (!ret) return;
+          removeBoard(id);
           rerender();
-        })
-        .catch(function (err) { toast(err.message, 'error'); });
+          toast('已从白板移除', 'success');
+        });
+        return;
+      }
+
+      handleDropByColumn(epic, col.dataset.col);
     });
   }
 
@@ -166,6 +308,6 @@
   }
 
   rerender();
-  bindBoardInteractions();
   bindCreate();
+  document.querySelectorAll('.kanban-col').forEach(bindColumnDnD);
 })();

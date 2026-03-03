@@ -10,9 +10,11 @@ LLM 拆分 Provider：通过 OpenAI 兼容接口根据 Epic 标题/描述生成�
 from __future__ import annotations
 
 import json
+import os
 import uuid
 import urllib.request
 from datetime import date
+from pathlib import Path
 
 from app.config import settings
 from app.services.split.provider import CandidateTask, SplitCandidateSet
@@ -20,6 +22,31 @@ from app.services.split.provider import CandidateTask, SplitCandidateSet
 
 class LLMSplitProvider:
     name = "llm"
+
+    def _read_openclaw_token(self) -> str:
+        try:
+            p = Path.home() / '.openclaw' / 'openclaw.json'
+            if not p.exists():
+                return ''
+            cfg = json.loads(p.read_text(encoding='utf-8'))
+            return cfg.get('gateway', {}).get('auth', {}).get('token', '') or ''
+        except Exception:
+            return ''
+
+    def _resolve_api_key(self) -> str:
+        return (
+            settings.split_llm_api_key
+            or os.environ.get('OPENCODE_API_KEY', '')
+            or os.environ.get('OPENCODE_ZEN_API_KEY', '')
+            or os.environ.get('OPENCLAW_GATEWAY_TOKEN', '')
+            or self._read_openclaw_token()
+        )
+
+    def _resolve_base_url(self) -> str:
+        raw = (settings.split_llm_base_url or '').strip()
+        if raw in ('openclaw', 'opencode', 'local-openclaw'):
+            return 'http://127.0.0.1:18789/v1'
+        return raw.rstrip('/') if raw else 'http://127.0.0.1:18789/v1'
 
     def _build_prompt(self, title: str, description: str | None, due_date: date | None) -> str:
         due = due_date.isoformat() if due_date else ""
@@ -36,7 +63,8 @@ class LLMSplitProvider:
         )
 
     def generate(self, title: str, description: str | None, start_date: date | None, due_date: date | None) -> SplitCandidateSet:
-        if not settings.split_llm_enabled or not settings.split_llm_api_key:
+        api_key = self._resolve_api_key()
+        if not settings.split_llm_enabled or not api_key:
             raise RuntimeError("LLM split not configured")
 
         prompt = self._build_prompt(title, description, due_date)
@@ -49,14 +77,14 @@ class LLMSplitProvider:
             "temperature": 0.4,
         }
 
-        base = settings.split_llm_base_url.rstrip("/")
+        base = self._resolve_base_url()
         req = urllib.request.Request(
             url=f"{base}/chat/completions",
             data=json.dumps(payload).encode("utf-8"),
             method="POST",
             headers={
                 "Content-Type": "application/json",
-                "Authorization": f"Bearer {settings.split_llm_api_key}",
+                "Authorization": f"Bearer {api_key}",
             },
         )
 

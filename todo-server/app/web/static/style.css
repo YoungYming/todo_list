@@ -701,13 +701,18 @@ body {
   margin-bottom: var(--space-6);
 }
 .kanban-col {
+  position: relative;
   background: var(--bg-elevated);
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
   padding: var(--space-3);
+  overflow: hidden;
 }
 .kanban-col h3 { margin: 0 0 var(--space-3) 0; font-size: var(--text-base); }
+.kanban-col__head { position: relative; z-index: 2; }
 .kanban-drop {
+  position: relative;
+  z-index: 2;
   min-height: 120px;
   border: 1px dashed var(--border-default);
   border-radius: var(--radius-md);
@@ -726,6 +731,35 @@ body {
 .epic-card__title { font-weight: 600; margin-bottom: var(--space-1); }
 .epic-card__meta { font-size: var(--text-xs); color: var(--text-secondary); }
 .kanban-drop.drag-over { background: var(--accent-muted); }
+
+.kanban-side {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 72px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--text-xs);
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--transition-fast);
+  z-index: 1;
+}
+.kanban-side--left {
+  left: 0;
+  color: #0b5ed7;
+  background: linear-gradient(90deg, rgba(0,113,227,0.22), rgba(0,113,227,0));
+}
+.kanban-side--right {
+  right: 0;
+  color: #c62828;
+  background: linear-gradient(270deg, rgba(255,59,48,0.25), rgba(255,59,48,0));
+}
+.kanban-col.drag-left .kanban-side--left { opacity: 1; }
+.kanban-col.drag-right .kanban-side--right { opacity: 1; }
 
 @media (max-width: 768px) {
   .app-shell { flex-direction: column; }
