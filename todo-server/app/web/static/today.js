@@ -1,5 +1,6 @@
 (function () {
   var DBG = window.__todoDebug;
+  var __todayBound = false;
   function log() {
     if (DBG && console && console.log) {
       console.log.apply(console, ['[today]'].concat(Array.prototype.slice.call(arguments)));
@@ -12,6 +13,9 @@
   }
 
   function init() {
+    if (__todayBound) return;
+    __todayBound = true;
+
     var modal = document.getElementById('modal-complete');
     var form = document.getElementById('form-complete-feedback');
     if (!modal || !form) return;
@@ -109,10 +113,18 @@
       log('modal close');
     }
 
+    function sanitizeModalState() {
+      var hasTaskButtons = document.querySelectorAll('.btn-complete[data-task-id]').length > 0;
+      var hasValidTaskId = !!(taskIdInput && String(taskIdInput.value || '').trim());
+      if (!hasTaskButtons || !hasValidTaskId) {
+        closeModal();
+      }
+      if (taskIdInput) taskIdInput.value = '';
+      if (modal && modal.dataset) modal.dataset.taskId = '';
+    }
+
     // 初始化时强制关闭弹窗，避免浏览器恢复旧 UI 状态导致 taskId 丢失
-    closeModal();
-    if (taskIdInput) taskIdInput.value = '';
-    if (modal && modal.dataset) modal.dataset.taskId = '';
+    sanitizeModalState();
 
     // 完成按钮
     var btns = document.querySelectorAll('.btn-complete');
@@ -127,6 +139,12 @@
       cancelBtn.addEventListener('click', closeModal);
       cancelBtn.addEventListener('mousedown', function () { log('cancel mousedown'); });
     }
+    // 兜底：事件委托，防止按钮监听在页面恢复后丢失
+    document.addEventListener('click', function (e) {
+      var el = e.target.closest('#btn-cancel-complete, #modal-backdrop');
+      if (el) closeModal();
+    }, true);
+
     var backdrop = document.getElementById('modal-backdrop');
     if (backdrop) backdrop.addEventListener('click', closeModal);
     document.addEventListener('keydown', function (e) {
@@ -252,6 +270,11 @@
     } else {
       init();
     }
+    // 浏览器前进/后退恢复（bfcache）时，重新初始化以修复弹窗残留状态
+    window.addEventListener('pageshow', function () {
+      __todayBound = false;
+      init();
+    });
   } catch (e) {
     console.error('[today] init error', e);
   }
