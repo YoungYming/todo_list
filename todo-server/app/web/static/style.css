@@ -693,6 +693,40 @@ body {
 }
 
 /* ========== 响应式：小屏时侧栏收起为顶栏 ========== */
+/* ========== Kanban ========== */
+.kanban {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4);
+  margin-bottom: var(--space-6);
+}
+.kanban-col {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-3);
+}
+.kanban-col h3 { margin: 0 0 var(--space-3) 0; font-size: var(--text-base); }
+.kanban-drop {
+  min-height: 120px;
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.epic-card {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: var(--bg-elevated);
+  padding: var(--space-3);
+  cursor: grab;
+}
+.epic-card__title { font-weight: 600; margin-bottom: var(--space-1); }
+.epic-card__meta { font-size: var(--text-xs); color: var(--text-secondary); }
+.kanban-drop.drag-over { background: var(--accent-muted); }
+
 @media (max-width: 768px) {
   .app-shell { flex-direction: column; }
   .app-sidebar {
