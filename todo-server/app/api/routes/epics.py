@@ -100,3 +100,14 @@ def update_epic(epic_id: int, body: EpicUpdate, db: Session = Depends(get_db)):
     db.commit()
     db.refresh(epic)
     return epic
+
+
+@router.delete("/{epic_id}", status_code=204)
+def delete_epic(epic_id: int, db: Session = Depends(get_db)):
+    """删除 Epic（级联删除其 Task/拆分记录）。"""
+    epic = db.query(Epic).filter(Epic.id == epic_id).first()
+    if not epic:
+        raise HTTPException(status_code=404, detail="Epic not found")
+    db.delete(epic)
+    db.commit()
+    return None

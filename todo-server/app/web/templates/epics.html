@@ -39,19 +39,19 @@
   <div class="kanban-col" data-col="in_progress">
     <div class="kanban-col__head"><h3>进行中</h3></div>
     <div class="kanban-side kanban-side--left">今日需做</div>
-    <div class="kanban-side kanban-side--right">删除白板</div>
+    <div class="kanban-side kanban-side--right">删除记录</div>
     <div class="kanban-drop" id="col-in-progress"></div>
   </div>
   <div class="kanban-col" data-col="done">
     <div class="kanban-col__head"><h3>已完成</h3></div>
     <div class="kanban-side kanban-side--left">今日需做</div>
-    <div class="kanban-side kanban-side--right">删除白板</div>
+    <div class="kanban-side kanban-side--right">删除记录</div>
     <div class="kanban-drop" id="col-done"></div>
   </div>
   <div class="kanban-col" data-col="overdue">
     <div class="kanban-col__head"><h3>已过期未完成</h3></div>
     <div class="kanban-side kanban-side--left">今日需做</div>
-    <div class="kanban-side kanban-side--right">删除白板</div>
+    <div class="kanban-side kanban-side--right">删除记录</div>
     <div class="kanban-drop" id="col-overdue"></div>
   </div>
 </section>
@@ -97,5 +97,5 @@
 
 {% block scripts %}
 <script>window.EPICS_DATA = {{ epics | tojson }};</script>
-<script src="/static/epics.js?v=20260303-3"></script>
+<script src="/static/epics.js?v=20260303-4"></script>
 {% endblock %}

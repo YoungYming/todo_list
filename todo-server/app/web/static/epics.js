@@ -122,6 +122,16 @@
     });
   }
 
+  function deleteEpic(epicId) {
+    return fetch(base + '/api/epics/' + epicId, {
+      method: 'DELETE',
+      credentials: 'same-origin'
+    }).then(function (res) {
+      if (!res.ok) return parseError(res, '删除 Epic 失败');
+      return true;
+    });
+  }
+
   function applyEpicUpdate(updated) {
     var idx = epics.findIndex(function (x) { return x.id === updated.id; });
     if (idx >= 0) epics[idx] = updated;
@@ -282,16 +292,20 @@
         return;
       }
       if (sameColumnDrag && intent === 'right') {
-        if (getBoardIds().indexOf(id) < 0) return toast('该卡片不在白板中', 'info');
         openActionModal({
-          title: '从白板移除',
-          subtitle: '确认将该卡片从今日白板中删除吗？',
+          title: '删除该列中的 Epic 记录',
+          subtitle: '将永久删除该 Epic 及其子任务，是否继续？',
           epicId: id
         }).then(function (ret) {
           if (!ret) return;
-          removeBoard(id);
-          rerender();
-          toast('已从白板移除', 'success');
+          deleteEpic(id)
+            .then(function () {
+              epics = epics.filter(function (x) { return x.id !== id; });
+              removeBoard(id);
+              rerender();
+              toast('已删除该 Epic 记录', 'success');
+            })
+            .catch(function (err) { toast(err.message, 'error'); });
         });
         return;
       }
