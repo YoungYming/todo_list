@@ -31,6 +31,7 @@
     var taskTypeCustomInput = document.getElementById('complete-task-type-custom');
 
     var submitting = false;
+    var selectedTaskTypes = [];
 
     function syncMinutes(fromRange) {
       var val = 60;
@@ -48,7 +49,19 @@
       return val;
     }
 
+    function updateTaskTypeInput() {
+      if (!taskTypeInput) return;
+      var custom = taskTypeCustomInput ? taskTypeCustomInput.value.trim() : '';
+      var values = selectedTaskTypes.slice();
+      if (values.indexOf('其他') !== -1 && custom) {
+        values = values.filter(function (x) { return x !== '其他'; });
+        values.push(custom);
+      }
+      taskTypeInput.value = values.join(',');
+    }
+
     function clearTaskType() {
+      selectedTaskTypes = [];
       if (taskTypeInput) taskTypeInput.value = '';
       if (taskTypeCustomInput) taskTypeCustomInput.value = '';
       if (taskTypeOtherWrap) taskTypeOtherWrap.hidden = true;
@@ -60,28 +73,35 @@
       if (!btn || !taskTypeChips) return;
       var value = btn.getAttribute('data-value') || '';
       var isOther = value === '其他';
+      var idx = selectedTaskTypes.indexOf(value);
 
-      taskTypeChips.querySelectorAll('.task-type-chip').forEach(function (chip) {
-        chip.classList.remove('task-type-chip--selected');
-      });
-      btn.classList.add('task-type-chip--selected');
+      if (idx >= 0) {
+        selectedTaskTypes.splice(idx, 1);
+        btn.classList.remove('task-type-chip--selected');
+      } else {
+        selectedTaskTypes.push(value);
+        btn.classList.add('task-type-chip--selected');
+      }
 
-      if (taskTypeInput) taskTypeInput.value = isOther ? '' : value;
-      if (taskTypeOtherWrap) taskTypeOtherWrap.hidden = !isOther;
+      var hasOther = selectedTaskTypes.indexOf('其他') >= 0;
+      if (taskTypeOtherWrap) taskTypeOtherWrap.hidden = !hasOther;
       if (taskTypeCustomInput) {
-        if (isOther) taskTypeCustomInput.focus();
+        if (hasOther) taskTypeCustomInput.focus();
         else taskTypeCustomInput.value = '';
       }
-      log('task type selected ->', value);
+      updateTaskTypeInput();
+      log('task type selected ->', selectedTaskTypes.join(','));
     }
 
     function openModal(taskId, title) {
-      if (taskIdInput) taskIdInput.value = taskId || '';
+      var id = String(taskId || '').trim();
+      if (taskIdInput) taskIdInput.value = id;
+      modal.dataset.taskId = id;
       if (titleEl) titleEl.textContent = title || '';
       syncMinutes(false);
       clearTaskType();
       modal.removeAttribute('hidden');
-      log('modal open', taskId, title);
+      log('modal open', id, title);
     }
 
     function closeModal() {
@@ -131,9 +151,7 @@
 
     if (taskTypeCustomInput) {
       taskTypeCustomInput.addEventListener('input', function () {
-        if (!taskTypeInput) return;
-        var v = this.value.trim();
-        taskTypeInput.value = v || '其他';
+        updateTaskTypeInput();
       });
     }
 
@@ -142,8 +160,17 @@
       if (submitting) return;
 
       var taskId = taskIdInput ? String(taskIdInput.value || '').trim() : '';
+      if (!taskId && modal && modal.dataset) taskId = String(modal.dataset.taskId || '').trim();
       if (!taskId) {
-        toast('任务 ID 无效，请刷新后重试', 'error');
+        var firstBtn = document.querySelector('.btn-complete[data-task-id]');
+        if (firstBtn) {
+          taskId = String(firstBtn.getAttribute('data-task-id') || '').trim();
+          if (taskIdInput) taskIdInput.value = taskId;
+          if (modal && modal.dataset) modal.dataset.taskId = taskId;
+        }
+      }
+      if (!taskId) {
+        toast('任务 ID 无效：请先点“完成”按钮后再提交', 'error');
         return;
       }
 
@@ -159,10 +186,8 @@
       if (actualMinutesInput) actualMinutesInput.value = String(actualVal);
       if (minutesValueEl) minutesValueEl.textContent = String(actualVal);
 
+      updateTaskTypeInput();
       var taskTypeVal = taskTypeInput ? taskTypeInput.value.trim() : '';
-      if (document.querySelector('.task-type-chip--selected') && !taskTypeVal && taskTypeCustomInput) {
-        taskTypeVal = taskTypeCustomInput.value.trim() || '其他';
-      }
 
       var payload = {
         difficulty: parseInt((document.getElementById('complete-difficulty') || {}).value || '3', 10) || 3,
