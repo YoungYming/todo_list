@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{% block title %}Todo Server{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css?v=20260303-1" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="app-sidebar" role="navigation" aria-label="主导航">
+      <a href="/app" class="app-sidebar__brand">Todo</a>
+      <nav class="app-sidebar__nav">
+        <a href="/app" class="app-sidebar__link {% if request.url.path == '/app' or request.url.path == '/app/' %}app-sidebar__link--active{% endif %}">今日待办</a>
+        <a href="/app/epics" class="app-sidebar__link {% if request.url.path.startswith('/app/epics') %}app-sidebar__link--active{% endif %}">Epic 列表</a>
+        <a href="/docs" class="app-sidebar__link app-sidebar__link--muted" target="_blank" rel="noopener">API 文档</a>
+      </nav>
+      <div class="app-sidebar__footer">
+        <a href="/" class="app-sidebar__link app-sidebar__link--muted">首页</a>
+      </div>
+    </aside>
+    <main class="app-main" role="main">
+      {% block content %}{% endblock %}
+    </main>
+  </div>
+  <script>window.API_BASE = {{ (api_base_path | default('', true)) | tojson }};</script>
+  <script src="/static/app.js"></script>
+  <script src="/static/toast.js"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>
