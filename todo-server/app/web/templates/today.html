@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+{% block title %}今日待办 - Todo Server{% endblock %}
+{% block content %}
+<header class="page-header">
+  <h1 class="page-header__title">今日待办</h1>
+  <p class="page-header__meta">{{ plan_date }} · 可用 {{ available_minutes }} 分钟</p>
+  {% if selection_reason %}<p class="page-header__reason">{{ selection_reason }}</p>{% endif %}
+</header>
+
+<div class="card">
+  <ul class="task-list">
+    {% for t in tasks %}
+    <li class="task-item" data-task-id="{{ t.id }}">
+      <div class="task-item__body">
+        <h3 class="task-item__title">{{ t.title }}</h3>
+        <div class="task-item__meta">
+          <span>{{ t.est_minutes }} 分钟</span>
+          {% if t.due_date %}<span class="task-item__due">截止 {{ t.due_date }}</span>{% endif %}
+        </div>
+      </div>
+      <button type="button" class="btn btn--success btn-complete" data-task-id="{{ t.id }}" data-title="{{ t.title }}">完成</button>
+    </li>
+    {% else %}
+    <li class="task-list__empty">暂无待办，或今日计划为空。可在 Epic 列表中创建任务并完成拆分。</li>
+    {% endfor %}
+  </ul>
+</div>
+
+<div id="modal-complete" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="modal-complete-title">
+  <div class="modal-overlay__backdrop" id="modal-backdrop" aria-hidden="true"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h2 id="modal-complete-title" class="modal__title">完成反馈</h2>
+      <p class="modal__subtitle" id="modal-task-title"></p>
+    </div>
+    <div class="modal__body">
+      <form id="form-complete-feedback">
+        <input type="hidden" id="complete-task-id" name="task_id" />
+        <div class="form-group">
+          <label class="form-group__label" for="complete-difficulty">难易度 (1–5)</label>
+          <input type="number" id="complete-difficulty" name="difficulty" class="form-group__input" min="1" max="5" value="3" />
+        </div>
+        <div class="form-group">
+          <label class="form-group__label">实际用时（分钟）</label>
+          <div class="minutes-slider">
+            <input type="range" id="complete-actual-minutes-range" class="minutes-slider__range" min="30" max="240" step="5" value="60" />
+            <input type="hidden" id="complete-actual-minutes" name="actual_minutes" value="60" />
+            <span class="minutes-slider__value" id="minutes-slider-value">60</span> 分钟
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-group__label" for="complete-output">产出（一句话）</label>
+          <input type="text" id="complete-output" name="output" class="form-group__input" placeholder="可选" />
+        </div>
+        <div class="form-group">
+          <label class="form-group__label" for="complete-output-size">体量 (1–5)</label>
+          <input type="number" id="complete-output-size" name="output_size" class="form-group__input" min="1" max="5" placeholder="可选" />
+        </div>
+        <div class="form-group">
+          <label class="form-group__label">任务类型</label>
+          <div class="task-type-chips" id="task-type-chips" role="group" aria-label="任务类型">
+            <button type="button" class="task-type-chip" data-value="文档">文档</button>
+            <button type="button" class="task-type-chip" data-value="代码">代码</button>
+            <button type="button" class="task-type-chip" data-value="调研">调研</button>
+            <button type="button" class="task-type-chip" data-value="沟通">沟通</button>
+            <button type="button" class="task-type-chip" data-value="实验">实验</button>
+            <button type="button" class="task-type-chip" data-value="汇报">汇报</button>
+            <button type="button" class="task-type-chip" data-value="杂务">杂务</button>
+            <button type="button" class="task-type-chip task-type-chip--other" data-value="其他" id="task-type-other">其他</button>
+          </div>
+          <input type="hidden" id="complete-task-type" name="task_type" value="" />
+          <div class="task-type-other-wrap" id="task-type-other-wrap" hidden>
+            <input type="text" id="complete-task-type-custom" class="form-group__input form-group__input--sm" placeholder="输入其他类型" maxlength="20" />
+          </div>
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--secondary" id="btn-cancel-complete">取消</button>
+          <button type="submit" class="btn btn--primary">提交</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.TODAY_DATA = {{ today_json | safe }};</script>
+<script src="/static/today.js?v=20260303-1"></script>
+{% endblock %}
