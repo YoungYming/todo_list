@@ -760,6 +760,10 @@ body {
 }
 .kanban-col.drag-left .kanban-side--left { opacity: 1; }
 .kanban-col.drag-right .kanban-side--right { opacity: 1; }
+.kanban-col.drag-center {
+  background: linear-gradient(180deg, rgba(0,113,227,0.08), rgba(0,113,227,0.02));
+  border-color: rgba(0,113,227,0.45);
+}
 
 @media (max-width: 768px) {
   .app-shell { flex-direction: column; }

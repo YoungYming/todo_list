@@ -59,6 +59,9 @@
     setBoardIds(ids);
   }
 
+  var draggingEpicId = null;
+  var draggingFromCol = null;
+
   function renderCard(epic) {
     var el = document.createElement('div');
     el.className = 'epic-card';
@@ -72,8 +75,18 @@
       '<a class="btn btn--secondary" href="/app/epics/' + epic.id + '">详情</a>' +
       '</div>';
     el.addEventListener('dragstart', function (e) {
+      draggingEpicId = epic.id;
+      draggingFromCol = category(epic);
       e.dataTransfer.setData('text/plain', String(epic.id));
       e.dataTransfer.effectAllowed = 'move';
+    });
+    el.addEventListener('dragend', function () {
+      draggingEpicId = null;
+      draggingFromCol = null;
+      document.querySelectorAll('.kanban-col').forEach(function (c) {
+        c.classList.remove('drag-left', 'drag-right', 'drag-center');
+        c.dataset.intent = '';
+      });
     });
     return el;
   }
@@ -231,11 +244,17 @@
 
     col.addEventListener('dragover', function (e) {
       e.preventDefault();
-      var rect = col.getBoundingClientRect();
-      var x = e.clientX - rect.left;
+      var sameColumnDrag = draggingFromCol && draggingFromCol === col.dataset.col;
       var intent = 'center';
-      if (x <= DRAG_SIDE_PX) intent = 'left';
-      else if (x >= rect.width - DRAG_SIDE_PX) intent = 'right';
+
+      if (sameColumnDrag) {
+        var rect = col.getBoundingClientRect();
+        var x = e.clientX - rect.left;
+        if (x <= DRAG_SIDE_PX) intent = 'left';
+        else if (x >= rect.width - DRAG_SIDE_PX) intent = 'right';
+      } else {
+        intent = 'center';
+      }
 
       clearIntent(col);
       col.classList.add('drag-' + intent);
@@ -247,19 +266,22 @@
     col.addEventListener('drop', function (e) {
       e.preventDefault();
       var id = parseInt(e.dataTransfer.getData('text/plain'), 10);
-      clearIntent(col);
-      if (!id) return;
+      if (!id) { clearIntent(col); return; }
       var epic = epics.find(function (x) { return x.id === id; });
-      if (!epic) return;
+      if (!epic) { clearIntent(col); return; }
 
       var intent = col.dataset.intent || 'center';
-      if (intent === 'left') {
+      var sameColumnDrag = draggingFromCol && draggingFromCol === col.dataset.col;
+      clearIntent(col);
+
+      // 仅“本列内拖动”触发左右侧交互
+      if (sameColumnDrag && intent === 'left') {
         addBoard(id);
         rerender();
         toast('已加入今日需做白板', 'success');
         return;
       }
-      if (intent === 'right') {
+      if (sameColumnDrag && intent === 'right') {
         if (getBoardIds().indexOf(id) < 0) return toast('该卡片不在白板中', 'info');
         openActionModal({
           title: '从白板移除',
@@ -274,6 +296,7 @@
         return;
       }
 
+      // 跨列拖动：仅执行列逻辑，不触发侧边交互
       handleDropByColumn(epic, col.dataset.col);
     });
   }
