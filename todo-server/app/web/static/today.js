@@ -101,6 +101,11 @@
       var id = String(taskId || '').trim();
       if (taskIdInput) taskIdInput.value = id;
       modal.dataset.taskId = id;
+      // 标记当前任务行，便于恢复/兜底取 taskId
+      document.querySelectorAll('.task-item--active').forEach(function (el) { el.classList.remove('task-item--active'); });
+      var activeRow = document.querySelector('.task-item[data-task-id="' + id + '"]');
+      if (activeRow) activeRow.classList.add('task-item--active');
+
       if (titleEl) titleEl.textContent = title || '';
       syncMinutes(false);
       clearTaskType();
@@ -138,6 +143,8 @@
     if (cancelBtn) {
       cancelBtn.addEventListener('click', closeModal);
       cancelBtn.addEventListener('mousedown', function () { log('cancel mousedown'); });
+      cancelBtn.addEventListener('mouseup', closeModal);
+      cancelBtn.addEventListener('touchend', closeModal, { passive: true });
     }
     // 兜底：事件委托，防止按钮监听在页面恢复后丢失
     document.addEventListener('click', function (e) {
@@ -175,14 +182,31 @@
       });
     }
 
+    function ensureTaskId() {
+      var id = taskIdInput ? String(taskIdInput.value || '').trim() : '';
+      if (!id && modal && modal.dataset) id = String(modal.dataset.taskId || '').trim();
+      if (!id) {
+        var active = document.querySelector('.task-item.task-item--active[data-task-id]');
+        if (active) id = String(active.getAttribute('data-task-id') || '').trim();
+      }
+      if (!id) {
+        var firstBtn = document.querySelector('.btn-complete[data-task-id]');
+        if (firstBtn) id = String(firstBtn.getAttribute('data-task-id') || '').trim();
+      }
+      if (id) {
+        if (taskIdInput) taskIdInput.value = id;
+        if (modal && modal.dataset) modal.dataset.taskId = id;
+      }
+      return id;
+    }
+
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (submitting) return;
 
-      var taskId = taskIdInput ? String(taskIdInput.value || '').trim() : '';
-      if (!taskId && modal && modal.dataset) taskId = String(modal.dataset.taskId || '').trim();
+      var taskId = ensureTaskId();
       if (!taskId) {
-        toast('任务 ID 无效：请先点对应任务右侧“完成”再提交', 'error');
+        toast('任务 ID 无效：请刷新页面后，点击任务右侧“完成”再提交', 'error');
         return;
       }
 
