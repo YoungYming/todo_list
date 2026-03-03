@@ -45,7 +45,7 @@ def generate_and_store_candidates(epic_id: int, db: Session) -> list[dict]:
         return []
 
     providers = [LocalRulesProvider()]
-    if settings.split_llm_enabled and settings.split_llm_api_key:
+    if settings.split_llm_enabled:
         providers.append(LLMSplitProvider())
     result = []
     for prov in providers:
@@ -56,7 +56,8 @@ def generate_and_store_candidates(epic_id: int, db: Session) -> list[dict]:
                 start_date=epic.start_date,
                 due_date=epic.due_date,
             )
-        except Exception:
+        except Exception as e:
+            print(f"[split] provider {getattr(prov, 'name', type(prov).__name__)} failed: {e}")
             continue
         row = SplitCandidate(
             epic_id=epic_id,

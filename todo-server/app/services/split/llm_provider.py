@@ -53,10 +53,11 @@ class LLMSplitProvider:
         return (
             "你是任务拆分助手。请把一个 Epic 拆成可执行的子任务。\n"
             "要求：\n"
-            "1) 输出必须是 JSON 数组，不要 markdown。\n"
+            "1) 仅输出 JSON 数组，不要任何解释、不要 markdown、不要前后缀文本。\n"
             "2) 每项字段：title(string), est_minutes(int 25-120), reason(string,可简短), due_date(string|null, ISO 日期)。\n"
             "3) 给出 3-8 个子任务，标题清晰可执行。\n"
-            "4) 若信息不足，基于常识补全合理步骤。\n\n"
+            "4) 若信息不足，基于常识补全合理步骤。\n"
+            "5) 输出示例：[{\"title\":\"任务A\",\"est_minutes\":45,\"reason\":\"...\",\"due_date\":null}]\n\n"
             f"Epic 标题: {title}\n"
             f"Epic 描述: {description or ''}\n"
             f"截止日期: {due}\n"
@@ -92,13 +93,24 @@ class LLMSplitProvider:
             body = json.loads(resp.read().decode("utf-8"))
 
         content = body.get("choices", [{}])[0].get("message", {}).get("content", "[]")
-        content = content.strip()
+        content = (content or '').strip()
         if content.startswith("```"):
             content = content.strip("`")
             if content.lower().startswith("json"):
                 content = content[4:].strip()
 
-        arr = json.loads(content)
+        def parse_array(txt: str):
+            try:
+                return json.loads(txt)
+            except Exception:
+                pass
+            l = txt.find('[')
+            r = txt.rfind(']')
+            if l >= 0 and r > l:
+                return json.loads(txt[l:r+1])
+            raise ValueError('LLM response is not valid JSON array')
+
+        arr = parse_array(content)
         tasks: list[CandidateTask] = []
         due_str = due_date.isoformat() if due_date else None
         for item in arr if isinstance(arr, list) else []:
