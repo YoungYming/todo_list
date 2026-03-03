@@ -1,6 +1,7 @@
 (function () {
   var DBG = window.__todoDebug;
   var __todayBound = false;
+  var __modalOpenedByUser = false;
   function log() {
     if (DBG && console && console.log) {
       console.log.apply(console, ['[today]'].concat(Array.prototype.slice.call(arguments)));
@@ -99,6 +100,11 @@
 
     function openModal(taskId, title) {
       var id = String(taskId || '').trim();
+      if (!id) {
+        toast('未找到有效任务，请从任务列表点击“完成”', 'error');
+        return;
+      }
+      __modalOpenedByUser = true;
       if (taskIdInput) taskIdInput.value = id;
       modal.dataset.taskId = id;
       // 标记当前任务行，便于恢复/兜底取 taskId
@@ -115,17 +121,18 @@
 
     function closeModal() {
       modal.setAttribute('hidden', '');
+      __modalOpenedByUser = false;
       log('modal close');
     }
 
     function sanitizeModalState() {
       var hasTaskButtons = document.querySelectorAll('.btn-complete[data-task-id]').length > 0;
-      var hasValidTaskId = !!(taskIdInput && String(taskIdInput.value || '').trim());
-      if (!hasTaskButtons || !hasValidTaskId) {
-        closeModal();
-      }
+      closeModal();
       if (taskIdInput) taskIdInput.value = '';
       if (modal && modal.dataset) modal.dataset.taskId = '';
+      if (titleEl) titleEl.textContent = '';
+      if (!hasTaskButtons && submitBtn) submitBtn.disabled = true;
+      if (hasTaskButtons && submitBtn) submitBtn.disabled = false;
     }
 
     // 初始化时强制关闭弹窗，避免浏览器恢复旧 UI 状态导致 taskId 丢失
@@ -203,6 +210,11 @@
     form.addEventListener('submit', function (e) {
       e.preventDefault();
       if (submitting) return;
+
+      if (!__modalOpenedByUser) {
+        toast('请先点击对应任务右侧“完成”再提交', 'error');
+        return;
+      }
 
       var taskId = ensureTaskId();
       if (!taskId) {
