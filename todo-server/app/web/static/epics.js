@@ -62,7 +62,7 @@
   var draggingEpicId = null;
   var draggingFromCol = null;
 
-  function renderCard(epic) {
+  function renderCard(epic, sourceCol) {
     var el = document.createElement('div');
     el.className = 'epic-card';
     el.draggable = true;
@@ -76,7 +76,7 @@
       '</div>';
     el.addEventListener('dragstart', function (e) {
       draggingEpicId = epic.id;
-      draggingFromCol = category(epic);
+      draggingFromCol = sourceCol || category(epic);
       e.dataTransfer.setData('text/plain', String(epic.id));
       e.dataTransfer.effectAllowed = 'move';
     });
@@ -101,12 +101,12 @@
     var boardIds = getBoardIds();
     epics.forEach(function (e) {
       var c = category(e);
-      var card = renderCard(e);
+      var card = renderCard(e, c);
       if (c === 'done' && colDone) colDone.appendChild(card);
       else if (c === 'overdue' && colOver) colOver.appendChild(card);
       else if (colIn) colIn.appendChild(card);
 
-      if (boardIds.indexOf(e.id) >= 0 && board) board.appendChild(renderCard(e));
+      if (boardIds.indexOf(e.id) >= 0 && board) board.appendChild(renderCard(e, 'board'));
     });
   }
 
@@ -254,16 +254,20 @@
 
     col.addEventListener('dragover', function (e) {
       e.preventDefault();
-      var sameColumnDrag = draggingFromCol && draggingFromCol === col.dataset.col;
       var intent = 'center';
+      var rect = col.getBoundingClientRect();
+      var x = e.clientX - rect.left;
 
-      if (sameColumnDrag) {
-        var rect = col.getBoundingClientRect();
-        var x = e.clientX - rect.left;
-        if (x <= DRAG_SIDE_PX) intent = 'left';
-        else if (x >= rect.width - DRAG_SIDE_PX) intent = 'right';
+      if (col.dataset.col === 'board') {
+        if (x >= rect.width - DRAG_SIDE_PX) intent = 'right';
       } else {
-        intent = 'center';
+        var sameColumnDrag = draggingFromCol && draggingFromCol === col.dataset.col;
+        if (sameColumnDrag) {
+          if (x <= DRAG_SIDE_PX) intent = 'left';
+          else if (x >= rect.width - DRAG_SIDE_PX) intent = 'right';
+        } else {
+          intent = 'center';
+        }
       }
 
       clearIntent(col);
@@ -280,9 +284,32 @@
       var epic = epics.find(function (x) { return x.id === id; });
       if (!epic) { clearIntent(col); return; }
 
+      var targetCol = col.dataset.col;
       var intent = col.dataset.intent || 'center';
-      var sameColumnDrag = draggingFromCol && draggingFromCol === col.dataset.col;
+      var sameColumnDrag = draggingFromCol && draggingFromCol === targetCol;
       clearIntent(col);
+
+      // 白板区：center=加入白板，right=从白板移除
+      if (targetCol === 'board') {
+        if (intent === 'right') {
+          if (getBoardIds().indexOf(id) < 0) return toast('该卡片不在白板中', 'info');
+          openActionModal({
+            title: '从白板移除',
+            subtitle: '确认将该卡片从今日需做白板移除吗？',
+            epicId: id
+          }).then(function (ret) {
+            if (!ret) return;
+            removeBoard(id);
+            rerender();
+            toast('已从白板移除', 'success');
+          });
+          return;
+        }
+        addBoard(id);
+        rerender();
+        toast('已加入今日需做白板', 'success');
+        return;
+      }
 
       // 仅“本列内拖动”触发左右侧交互
       if (sameColumnDrag && intent === 'left') {
@@ -311,7 +338,7 @@
       }
 
       // 跨列拖动：仅执行列逻辑，不触发侧边交互
-      handleDropByColumn(epic, col.dataset.col);
+      handleDropByColumn(epic, targetCol);
     });
   }
 

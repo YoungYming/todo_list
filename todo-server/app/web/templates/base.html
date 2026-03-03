@@ -6,7 +6,7 @@
   <title>{% block title %}Todo Server{% endblock %}</title>
   <link rel="stylesheet" href="/static/style.css?v=20260303-1" />
 </head>
-<body>
+<body class="{% block body_class %}{% endblock %}">
   <div class="app-shell">
     <aside class="app-sidebar" role="navigation" aria-label="主导航">
       <a href="/app" class="app-sidebar__brand">Todo</a>

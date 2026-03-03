@@ -155,6 +155,9 @@ body {
   padding: var(--space-8) var(--space-10);
   max-width: 720px;
 }
+.page-epics .app-main {
+  max-width: 1400px;
+}
 
 /* ========== 页面标题与描述 ========== */
 .page-header {
@@ -694,9 +697,13 @@ body {
 
 /* ========== 响应式：小屏时侧栏收起为顶栏 ========== */
 /* ========== Kanban ========== */
+.board-card .card__body { padding-top: var(--space-4); }
+.board-zone { padding: 0; border: none; background: transparent; }
+#today-board { min-height: 92px; }
+
 .kanban {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(3, minmax(260px, 1fr));
   gap: var(--space-4);
   margin-bottom: var(--space-6);
 }
