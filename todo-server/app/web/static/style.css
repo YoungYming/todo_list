@@ -854,6 +854,48 @@ body {
   border-color: rgba(0,113,227,0.45);
 }
 
+.epic-select-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.epic-select {
+  width: 16px;
+  height: 16px;
+}
+.history-calendar {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: var(--space-3);
+}
+.history-calendar th,
+.history-calendar td {
+  border: 1px solid var(--border-subtle);
+  width: 14.28%;
+  text-align: left;
+  vertical-align: top;
+  padding: 6px;
+}
+.history-calendar__link {
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-height: 56px;
+}
+.history-calendar__link em {
+  font-style: normal;
+  font-size: 12px;
+  color: var(--accent);
+}
+.history-calendar__cell.is-active {
+  background: var(--accent-muted);
+}
+.history-calendar__empty {
+  background: #fafafa;
+}
+
 @media (max-width: 768px) {
   .app-shell { flex-direction: column; }
   .app-sidebar {

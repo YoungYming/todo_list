@@ -9,7 +9,8 @@ from app.api.deps import get_db
 from app.config import settings
 
 
-from datetime import date
+from datetime import date, datetime, timedelta
+import calendar
 import json
 
 from fastapi import HTTPException
@@ -17,6 +18,7 @@ from fastapi import HTTPException
 from app.models.epic import Epic
 from app.models.split_decision import SplitDecision
 from app.models.task import Task
+from app.models.completion import Completion
 from app.services.scheduler import build_today_plan
 
 
@@ -89,6 +91,86 @@ def page_epics(request: Request, db: Session = Depends(get_db)):
     ctx = {"request": request, "epics": epic_dicts}
     ctx.update(_base_ctx())
     return templates.TemplateResponse("epics.html", ctx)
+
+
+@router.get("/app/history", response_class=HTMLResponse)
+def page_history(
+    request: Request,
+    selected_date: str | None = None,
+    month: str | None = None,
+    db: Session = Depends(get_db),
+):
+    """历史任务页：按日历查看完成记录。"""
+    today = date.today()
+
+    if month:
+        try:
+            y, m = map(int, month.split("-"))
+            month_date = date(y, m, 1)
+        except Exception:
+            month_date = date(today.year, today.month, 1)
+    else:
+        month_date = date(today.year, today.month, 1)
+
+    if selected_date:
+        try:
+            focus_date = date.fromisoformat(selected_date)
+        except Exception:
+            focus_date = today
+    else:
+        focus_date = today
+
+    month_start = month_date
+    _, days_in_month = calendar.monthrange(month_start.year, month_start.month)
+    month_end = month_start + timedelta(days=days_in_month)
+
+    rows = (
+        db.query(Completion, Task, Epic)
+        .join(Task, Completion.task_id == Task.id)
+        .join(Epic, Task.epic_id == Epic.id)
+        .filter(Completion.completed_at >= datetime.combine(month_start, datetime.min.time()))
+        .filter(Completion.completed_at < datetime.combine(month_end, datetime.min.time()))
+        .order_by(Completion.completed_at.desc())
+        .all()
+    )
+
+    day_map: dict[str, list[dict]] = {}
+    for c, t, e in rows:
+        d = c.completed_at.date().isoformat()
+        day_map.setdefault(d, []).append(
+            {
+                "task_id": t.id,
+                "task_title": t.title,
+                "epic_id": e.id,
+                "epic_title": e.title,
+                "completed_at": c.completed_at.strftime("%H:%M"),
+                "actual_minutes": c.actual_minutes,
+            }
+        )
+
+    cal_weeks = calendar.monthcalendar(month_start.year, month_start.month)
+    cells = []
+    for wk in cal_weeks:
+        row = []
+        for d in wk:
+            if d == 0:
+                row.append(None)
+                continue
+            ds = date(month_start.year, month_start.month, d).isoformat()
+            row.append({"date": ds, "day": d, "count": len(day_map.get(ds, []))})
+        cells.append(row)
+
+    selected_tasks = day_map.get(focus_date.isoformat(), [])
+
+    ctx = {
+        "request": request,
+        "month": month_start.strftime("%Y-%m"),
+        "focus_date": focus_date.isoformat(),
+        "calendar_rows": cells,
+        "selected_tasks": selected_tasks,
+    }
+    ctx.update(_base_ctx())
+    return templates.TemplateResponse("history.html", ctx)
 
 
 @router.get("/app/epics/{epic_id}", response_class=HTMLResponse)

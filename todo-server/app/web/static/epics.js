@@ -88,6 +88,12 @@
 
   var draggingEpicId = null;
   var draggingFromCol = null;
+  var selectedEpics = new Set();
+
+  function updateSelectedCount() {
+    var el = document.getElementById('selected-count');
+    if (el) el.textContent = '已选 ' + selectedEpics.size + ' 项';
+  }
 
   function renderSubtaskCard(task, epic, sourceCol) {
     var el = document.createElement('div');
@@ -127,8 +133,10 @@
     var boardBadge = inBoard
       ? '<span class="epic-card__badge" title="该 Epic 下有子卡片已加入白板">白板中有子卡片</span>'
       : '';
+    var checked = selectedEpics.has(epic.id) ? 'checked' : '';
     el.innerHTML =
       '<div class="epic-card__head">' +
+      '<label class="epic-select-wrap"><input class="epic-select" type="checkbox" data-epic-id="' + epic.id + '" ' + checked + ' />选择</label>' +
       '<div class="epic-card__title">' + epic.title + '</div>' +
       boardBadge +
       '</div>' +
@@ -137,6 +145,18 @@
       '<div class="form-actions" style="margin-top:8px">' +
       '<a class="btn btn--secondary" href="/app/epics/' + epic.id + '">详情</a>' +
       '</div>';
+
+    var box = el.querySelector('.epic-select');
+    if (box) {
+      box.addEventListener('change', function (evt) {
+        evt.stopPropagation();
+        var id = epic.id;
+        if (box.checked) selectedEpics.add(id);
+        else selectedEpics.delete(id);
+        updateSelectedCount();
+      });
+      box.addEventListener('click', function (evt) { evt.stopPropagation(); });
+    }
 
     var list = el.querySelector('.subepic-list');
     var tasks = Array.isArray(epic.tasks) ? epic.tasks : [];
@@ -232,6 +252,7 @@
     });
 
     renderBoard();
+    updateSelectedCount();
   }
 
   function patchEpic(epicId, payload) {
@@ -310,6 +331,13 @@
       });
     });
   }
+  document.addEventListener('keydown', function (e) {
+    if (!modal || modal.hasAttribute('hidden')) return;
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (modalForm && typeof modalForm.requestSubmit === 'function') modalForm.requestSubmit();
+    }
+  });
 
   function handleDropByColumn(epic, targetCol) {
     var from = category(epic);
@@ -466,6 +494,53 @@
     });
   }
 
+  function bindBatchActions() {
+    var btnSelectVisible = document.getElementById('btn-select-visible');
+    var btnClear = document.getElementById('btn-clear-selected');
+    var btnDelete = document.getElementById('btn-delete-selected');
+
+    if (btnSelectVisible) {
+      btnSelectVisible.addEventListener('click', function () {
+        epics.forEach(function (e) { selectedEpics.add(e.id); });
+        rerender();
+      });
+    }
+
+    if (btnClear) {
+      btnClear.addEventListener('click', function () {
+        selectedEpics.clear();
+        rerender();
+      });
+    }
+
+    if (btnDelete) {
+      btnDelete.addEventListener('click', function () {
+        var ids = Array.from(selectedEpics);
+        if (!ids.length) return toast('请先选择要删除的 Epic', 'info');
+        openActionModal({
+          title: '批量删除确认',
+          subtitle: '即将删除 ' + ids.length + ' 个 Epic（及其子任务），按回车可确认。',
+          epicId: ids[0]
+        }).then(function (ret) {
+          if (!ret) return;
+          var chain = Promise.resolve();
+          ids.forEach(function (id) {
+            chain = chain.then(function () { return deleteEpic(id).catch(function () { return true; }); });
+          });
+          chain.then(function () {
+            epics = epics.filter(function (x) { return selectedEpics.has(x.id) ? false : true; });
+            selectedEpics.clear();
+            setBoardTasks(getBoardTasks().filter(function (x) {
+              return epics.some(function (e) { return e.id === x.epic_id; });
+            }));
+            rerender();
+            toast('批量删除完成', 'success');
+          });
+        });
+      });
+    }
+  }
+
   function bindCreate() {
     var form = document.getElementById('form-create-epic');
     if (!form) return;
@@ -494,6 +569,7 @@
   }
 
   rerender();
+  bindBatchActions();
   bindCreate();
   document.querySelectorAll('.kanban-col').forEach(bindColumnDnD);
 })();
