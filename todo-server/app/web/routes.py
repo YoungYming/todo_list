@@ -143,7 +143,8 @@ def page_history(
                 "task_title": t.title,
                 "epic_id": e.id,
                 "epic_title": e.title,
-                "completed_at": c.completed_at.strftime("%H:%M"),
+                "created_at": (t.created_at.strftime("%Y-%m-%d %H:%M") if t.created_at else ""),
+                "completed_at": c.completed_at.strftime("%Y-%m-%d %H:%M"),
                 "actual_minutes": c.actual_minutes,
             }
         )

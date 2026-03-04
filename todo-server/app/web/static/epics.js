@@ -437,8 +437,8 @@
       clearIntent(col);
 
       if (targetCol === 'board') {
-        if (payload.kind !== 'task') return toast('请拖动子卡片到白板', 'info');
         if (intent === 'right') {
+          if (payload.kind !== 'task') return toast('仅支持拖动子卡片移出白板', 'info');
           openActionModal({
             title: '从白板移除',
             subtitle: '确认将该子卡片从今日白板移除吗？',
@@ -451,17 +451,64 @@
           });
           return;
         }
+
         var epic = epics.find(function (x) { return x.id === payload.epic_id; });
-        var added = addBoardTask({
-          id: payload.task_id,
-          epic_id: payload.epic_id,
-          title: payload.title,
-          est_minutes: payload.est_minutes,
-          due_date: payload.due_date
-        }, epic || null);
-        if (!added) return toast('该子卡片已在白板中', 'info');
+        if (!epic) return;
+
+        if (payload.kind === 'task') {
+          var addedOne = addBoardTask({
+            id: payload.task_id,
+            epic_id: payload.epic_id,
+            title: payload.title,
+            est_minutes: payload.est_minutes,
+            due_date: payload.due_date
+          }, epic || null);
+          if (!addedOne) return toast('该子卡片已在白板中', 'info');
+          rerender();
+          toast('已加入今日白板', 'success');
+          return;
+        }
+
+        // 拖动父 Epic 到白板：加入其全部未完成子任务
+        var tasks = Array.isArray(epic.tasks) ? epic.tasks.filter(function (t) { return t.status !== 'done'; }) : [];
+        if (!tasks.length) {
+          var goSplit = window.confirm('该 Epic 暂无可拖拽子任务。\n确定：视为原子任务并直接生成 1 个子任务加入白板\n取消：前往细分页面');
+          if (!goSplit) {
+            window.location.href = '/app/epics/' + epic.id;
+            return;
+          }
+          fetch(base + '/api/epics/' + epic.id + '/split_decision', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'same-origin',
+            body: JSON.stringify({
+              chosen_candidate_set_id: null,
+              final_tasks_json: [{ title: epic.title, est_minutes: 45, due_date: epic.due_date || null }],
+              edits_diff: 'atomic-from-board'
+            })
+          }).then(function (res) {
+            if (!res.ok) return parseError(res, '原子任务创建失败');
+            return fetch(base + '/api/epics/' + epic.id + '/tasks', { credentials: 'same-origin' });
+          }).then(function (res) {
+            if (!res.ok) return [];
+            return res.json();
+          }).then(function (rows) {
+            epic.tasks = rows || [];
+            var created = (rows || []).find(function (t) { return t.status !== 'done'; });
+            if (!created) return toast('已创建原子任务，请刷新后重试', 'info');
+            addBoardTask(created, epic);
+            rerender();
+            toast('已按原子任务加入白板', 'success');
+          }).catch(function (err) { toast(err.message, 'error'); });
+          return;
+        }
+
+        var addCount = 0;
+        tasks.forEach(function (t) {
+          if (addBoardTask(t, epic)) addCount += 1;
+        });
         rerender();
-        toast('已加入今日白板', 'success');
+        toast(addCount > 0 ? ('已加入白板 ' + addCount + ' 个子任务') : '这些子任务已在白板中', addCount > 0 ? 'success' : 'info');
         return;
       }
 
@@ -501,7 +548,9 @@
 
     if (btnSelectVisible) {
       btnSelectVisible.addEventListener('click', function () {
-        epics.forEach(function (e) { selectedEpics.add(e.id); });
+        epics.forEach(function (e) {
+          if (category(e) === 'in_progress') selectedEpics.add(e.id);
+        });
         rerender();
       });
     }
