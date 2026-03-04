@@ -52,11 +52,11 @@
   <div class="kanban-col" data-col="in_progress">
     <div class="kanban-col__head">
       <h3>进行中</h3>
-      <div class="kanban-col__tools">
-        <button type="button" class="btn btn--secondary" id="btn-select-visible">全选</button>
-        <button type="button" class="btn btn--secondary" id="btn-clear-selected">清空</button>
-        <button type="button" class="btn btn--primary" id="btn-delete-selected">删除选中</button>
-        <span class="text-muted" id="selected-count">已选 0 项</span>
+      <div class="kanban-col__tools" data-col-tools="in_progress">
+        <button type="button" class="btn btn--secondary" data-action="select-visible">全选</button>
+        <button type="button" class="btn btn--secondary" data-action="clear-selected">清空</button>
+        <button type="button" class="btn btn--primary" data-action="delete-selected">删除选中</button>
+        <span class="text-muted" data-role="selected-count">已选 0 项</span>
       </div>
     </div>
     <div class="kanban-side kanban-side--left">今日需做</div>
@@ -64,13 +64,29 @@
     <div class="kanban-drop" id="col-in-progress"></div>
   </div>
   <div class="kanban-col" data-col="done">
-    <div class="kanban-col__head"><h3>已完成</h3></div>
+    <div class="kanban-col__head">
+      <h3>已完成</h3>
+      <div class="kanban-col__tools" data-col-tools="done">
+        <button type="button" class="btn btn--secondary" data-action="select-visible">全选</button>
+        <button type="button" class="btn btn--secondary" data-action="clear-selected">清空</button>
+        <button type="button" class="btn btn--primary" data-action="delete-selected">删除选中</button>
+        <span class="text-muted" data-role="selected-count">已选 0 项</span>
+      </div>
+    </div>
     <div class="kanban-side kanban-side--left">今日需做</div>
     <div class="kanban-side kanban-side--right">删除记录</div>
     <div class="kanban-drop" id="col-done"></div>
   </div>
   <div class="kanban-col" data-col="overdue">
-    <div class="kanban-col__head"><h3>已过期未完成</h3></div>
+    <div class="kanban-col__head">
+      <h3>已过期未完成</h3>
+      <div class="kanban-col__tools" data-col-tools="overdue">
+        <button type="button" class="btn btn--secondary" data-action="select-visible">全选</button>
+        <button type="button" class="btn btn--secondary" data-action="clear-selected">清空</button>
+        <button type="button" class="btn btn--primary" data-action="delete-selected">删除选中</button>
+        <span class="text-muted" data-role="selected-count">已选 0 项</span>
+      </div>
+    </div>
     <div class="kanban-side kanban-side--left">今日需做</div>
     <div class="kanban-side kanban-side--right">删除记录</div>
     <div class="kanban-drop" id="col-overdue"></div>
@@ -111,5 +127,5 @@
 
 {% block scripts %}
 <script>window.EPICS_DATA = {{ epics | tojson }};</script>
-<script src="/static/epics.js?v=20260304-5"></script>
+<script src="/static/epics.js?v=20260304-6"></script>
 {% endblock %}

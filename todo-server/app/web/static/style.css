@@ -745,7 +745,9 @@ body {
 }
 .kanban-col h3 { margin: 0 0 var(--space-3) 0; font-size: var(--text-base); }
 .kanban-col__head { position: relative; z-index: 2; display:flex; align-items:center; justify-content:space-between; gap:var(--space-2); flex-wrap:wrap; }
-.kanban-col__tools { display:flex; gap:6px; align-items:center; flex-wrap:wrap; }
+.kanban-col__tools { display:flex; gap:6px; align-items:center; flex-wrap:wrap; opacity:0; pointer-events:none; transition:opacity var(--transition-fast); }
+.kanban-col:hover .kanban-col__tools,
+.kanban-col:focus-within .kanban-col__tools { opacity:1; pointer-events:auto; }
 .kanban-col__tools .btn { padding: 4px 10px; }
 .kanban-drop {
   position: relative;

@@ -91,8 +91,14 @@
   var selectedEpics = new Set();
 
   function updateSelectedCount() {
-    var el = document.getElementById('selected-count');
-    if (el) el.textContent = '已选 ' + selectedEpics.size + ' 项';
+    var cols = ['in_progress', 'done', 'overdue'];
+    cols.forEach(function (col) {
+      var count = epics.filter(function (e) { return selectedEpics.has(e.id) && category(e) === col; }).length;
+      var tool = document.querySelector('.kanban-col__tools[data-col-tools="' + col + '"]');
+      if (!tool) return;
+      var el = tool.querySelector('[data-role="selected-count"]');
+      if (el) el.textContent = '已选 ' + count + ' 项';
+    });
   }
 
   function renderSubtaskCard(task, epic, sourceCol) {
@@ -107,6 +113,7 @@
       '<div class="subepic-card__meta">' + (task.est_minutes || 45) + ' 分钟' + (inBoard ? ' · 已在白板' : '') + '</div>';
 
     el.addEventListener('dragstart', function (e) {
+      e.stopPropagation();
       draggingEpicId = null;
       draggingFromCol = sourceCol || 'subtask';
       e.dataTransfer.setData('text/plain', JSON.stringify({
@@ -171,6 +178,10 @@
     }
 
     el.addEventListener('dragstart', function (e) {
+      if (e.target && (e.target.closest('.subepic-card') || e.target.closest('.epic-select-wrap') || e.target.closest('a,button,input,textarea,label'))) {
+        e.preventDefault();
+        return;
+      }
       draggingEpicId = epic.id;
       draggingFromCol = sourceCol || category(epic);
       e.dataTransfer.setData('text/plain', JSON.stringify({ kind: 'epic', epic_id: epic.id }));
@@ -542,52 +553,58 @@
   }
 
   function bindBatchActions() {
-    var btnSelectVisible = document.getElementById('btn-select-visible');
-    var btnClear = document.getElementById('btn-clear-selected');
-    var btnDelete = document.getElementById('btn-delete-selected');
+    var toolbars = document.querySelectorAll('.kanban-col__tools[data-col-tools]');
+    toolbars.forEach(function (bar) {
+      var col = bar.getAttribute('data-col-tools');
+      var btnSelectVisible = bar.querySelector('[data-action="select-visible"]');
+      var btnClear = bar.querySelector('[data-action="clear-selected"]');
+      var btnDelete = bar.querySelector('[data-action="delete-selected"]');
 
-    if (btnSelectVisible) {
-      btnSelectVisible.addEventListener('click', function () {
-        epics.forEach(function (e) {
-          if (category(e) === 'in_progress') selectedEpics.add(e.id);
-        });
-        rerender();
-      });
-    }
-
-    if (btnClear) {
-      btnClear.addEventListener('click', function () {
-        selectedEpics.clear();
-        rerender();
-      });
-    }
-
-    if (btnDelete) {
-      btnDelete.addEventListener('click', function () {
-        var ids = Array.from(selectedEpics);
-        if (!ids.length) return toast('请先选择要删除的 Epic', 'info');
-        openActionModal({
-          title: '批量删除确认',
-          subtitle: '即将删除 ' + ids.length + ' 个 Epic（及其子任务），按回车可确认。',
-          epicId: ids[0]
-        }).then(function (ret) {
-          if (!ret) return;
-          var chain = Promise.resolve();
-          ids.forEach(function (id) {
-            chain = chain.then(function () { return deleteEpic(id).catch(function () { return true; }); });
+      if (btnSelectVisible) {
+        btnSelectVisible.addEventListener('click', function () {
+          epics.forEach(function (e) {
+            if (category(e) === col) selectedEpics.add(e.id);
           });
-          chain.then(function () {
-            epics = epics.filter(function (x) { return selectedEpics.has(x.id) ? false : true; });
-            selectedEpics.clear();
-            setBoardTasks(getBoardTasks().filter(function (x) {
-              return epics.some(function (e) { return e.id === x.epic_id; });
-            }));
-            rerender();
-            toast('批量删除完成', 'success');
+          rerender();
+        });
+      }
+
+      if (btnClear) {
+        btnClear.addEventListener('click', function () {
+          epics.forEach(function (e) {
+            if (category(e) === col) selectedEpics.delete(e.id);
+          });
+          rerender();
+        });
+      }
+
+      if (btnDelete) {
+        btnDelete.addEventListener('click', function () {
+          var ids = epics.filter(function (e) { return selectedEpics.has(e.id) && category(e) === col; }).map(function (e) { return e.id; });
+          if (!ids.length) return toast('请先选择要删除的 Epic', 'info');
+          openActionModal({
+            title: '批量删除确认',
+            subtitle: '即将删除 ' + ids.length + ' 个 Epic（及其子任务），按回车可确认。',
+            epicId: ids[0]
+          }).then(function (ret) {
+            if (!ret) return;
+            var chain = Promise.resolve();
+            ids.forEach(function (id) {
+              chain = chain.then(function () { return deleteEpic(id).catch(function () { return true; }); });
+            });
+            chain.then(function () {
+              epics = epics.filter(function (x) { return ids.indexOf(x.id) < 0; });
+              ids.forEach(function (id) { selectedEpics.delete(id); });
+              setBoardTasks(getBoardTasks().filter(function (x) {
+                return epics.some(function (e) { return e.id === x.epic_id; });
+              }));
+              rerender();
+              toast('批量删除完成', 'success');
+            });
           });
         });
-      });
-    }
+      }
+    });
   }
 
   function bindCreate() {
