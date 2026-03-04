@@ -235,6 +235,20 @@ body {
   font-weight: 500;
   color: var(--text-primary);
   margin: 0 0 var(--space-1) 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+.task-item__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 1px 8px;
+  border-radius: var(--radius-full);
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
 }
 
 .task-item__meta {
@@ -679,6 +693,19 @@ body {
   margin-bottom: var(--space-8);
 }
 
+.epics-top-panels {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-4);
+  align-items: start;
+  margin-bottom: var(--space-6);
+}
+
+.epics-top-panels .section-create,
+.epics-top-panels .board-card {
+  margin-bottom: 0;
+}
+
 .section-create .card__header {
   font-size: var(--text-base);
 }
@@ -735,15 +762,33 @@ body {
   padding: var(--space-3);
   cursor: grab;
 }
-.epic-card__title { font-weight: 600; margin-bottom: var(--space-1); }
+.epic-card__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-2);
+  margin-bottom: var(--space-1);
+}
+.epic-card__title { font-weight: 600; }
 .epic-card__meta { font-size: var(--text-xs); color: var(--text-secondary); }
+.epic-card__badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  background: var(--accent-muted);
+  color: var(--accent);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+}
 .kanban-drop.drag-over { background: var(--accent-muted); }
 
 .kanban-side {
   position: absolute;
   top: 0;
   bottom: 0;
-  width: 72px;
+  width: 33.333%;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -791,5 +836,11 @@ body {
   .app-main {
     margin-left: 0;
     padding: var(--space-6);
+  }
+  .epics-top-panels {
+    grid-template-columns: 1fr;
+  }
+  .kanban {
+    grid-template-columns: 1fr;
   }
 }

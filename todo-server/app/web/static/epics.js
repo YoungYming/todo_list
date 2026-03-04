@@ -2,7 +2,7 @@
   var base = (typeof window.API_BASE !== 'undefined' ? window.API_BASE : '') || '';
   var epics = Array.isArray(window.EPICS_DATA) ? window.EPICS_DATA.slice() : [];
   var boardKey = 'todo_today_board_epics';
-  var DRAG_SIDE_PX = 72;
+  var DRAG_SIDE_RATIO = 1 / 3;
 
   function toast(msg, type) {
     if (window.todoToast) window.todoToast(msg, type || 'info');
@@ -68,8 +68,15 @@
     el.draggable = true;
     el.dataset.epicId = String(epic.id);
     el.dataset.category = category(epic);
+    var inBoard = getBoardIds().indexOf(epic.id) >= 0;
+    var boardBadge = inBoard
+      ? '<span class="epic-card__badge" title="该 Epic 已加入今日需完成白板">已加入白板</span>'
+      : '';
     el.innerHTML =
+      '<div class="epic-card__head">' +
       '<div class="epic-card__title">' + epic.title + '</div>' +
+      boardBadge +
+      '</div>' +
       '<div class="epic-card__meta">进度 ' + Math.round((epic.progress || 0) * 100) + '% ' + (epic.due_date ? ('· 截止 ' + epic.due_date) : '') + '</div>' +
       '<div class="form-actions" style="margin-top:8px">' +
       '<a class="btn btn--secondary" href="/app/epics/' + epic.id + '">详情</a>' +
@@ -200,10 +207,11 @@
   function handleDropByColumn(epic, targetCol) {
     var from = category(epic);
 
-    if (targetCol === 'in_progress' && from === 'overdue') {
+    if (targetCol === 'in_progress' && (from === 'overdue' || from === 'done')) {
+      var fromDone = from === 'done';
       return openActionModal({
-        title: '移回进行中',
-        subtitle: '请设置新的截止日期（必填），可修改描述。',
+        title: fromDone ? '从已完成恢复到进行中' : '移回进行中',
+        subtitle: '请设置新的截止日期（必填），可修改描述。' + (fromDone ? ' 将同时重置进度。' : ''),
         epicId: epic.id,
         needDue: true,
         needDesc: true,
@@ -212,9 +220,11 @@
       }).then(function (ret) {
         if (!ret) return;
         if (!ret.due_date) return toast('请填写新的截止日期', 'error');
-        return patchEpic(epic.id, { due_date: ret.due_date, description: ret.description || epic.description })
+        var payload = { due_date: ret.due_date, description: ret.description || epic.description };
+        if (fromDone) payload.progress = 0.8;
+        return patchEpic(epic.id, payload)
           .then(function (updated) {
-            toast('已移回进行中', 'success');
+            toast(fromDone ? '已恢复到进行中' : '已移回进行中', 'success');
             applyEpicUpdate(updated);
           })
           .catch(function (err) { toast(err.message, 'error'); });
@@ -258,13 +268,14 @@
       var rect = col.getBoundingClientRect();
       var x = e.clientX - rect.left;
 
+      var sideWidth = Math.max(64, Math.floor(rect.width * DRAG_SIDE_RATIO));
       if (col.dataset.col === 'board') {
-        if (x >= rect.width - DRAG_SIDE_PX) intent = 'right';
+        if (x >= rect.width - sideWidth) intent = 'right';
       } else {
         var sameColumnDrag = draggingFromCol && draggingFromCol === col.dataset.col;
         if (sameColumnDrag) {
-          if (x <= DRAG_SIDE_PX) intent = 'left';
-          else if (x >= rect.width - DRAG_SIDE_PX) intent = 'right';
+          if (x <= sideWidth) intent = 'left';
+          else if (x >= rect.width - sideWidth) intent = 'right';
         } else {
           intent = 'center';
         }

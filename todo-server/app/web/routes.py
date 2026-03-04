@@ -36,7 +36,13 @@ def page_today(request: Request, db: Session = Depends(get_db)):
     minutes = settings.daily_available_minutes
     tasks, reason = build_today_plan(plan_date, minutes, db, save_to_daily_plan=True)
     task_dicts = [
-        {"id": t.id, "title": t.title, "est_minutes": t.est_minutes, "due_date": t.due_date.isoformat() if t.due_date else None}
+        {
+            "id": t.id,
+            "epic_id": t.epic_id,
+            "title": t.title,
+            "est_minutes": t.est_minutes,
+            "due_date": t.due_date.isoformat() if t.due_date else None,
+        }
         for t in tasks
     ]
     today_json = json.dumps(task_dicts, ensure_ascii=False)
