@@ -153,10 +153,11 @@ body {
   flex: 1;
   margin-left: 260px;
   padding: var(--space-8) var(--space-10);
-  max-width: 720px;
+  width: calc(100vw - 260px);
+  max-width: none;
 }
 .page-epics .app-main {
-  max-width: 1400px;
+  max-width: none;
 }
 
 /* ========== 页面标题与描述 ========== */
@@ -867,7 +868,7 @@ body {
 }
 .history-layout {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(420px, 1fr) minmax(520px, 1.4fr);
   gap: var(--space-4);
   align-items: start;
 }
