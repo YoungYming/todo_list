@@ -13,15 +13,37 @@
     else alert(msg);
   }
 
-  var boardKey = 'todo_today_board_epics';
+  var boardEpicKey = 'todo_today_board_epics';
+  var boardTaskKey = 'todo_today_board_tasks';
 
   function getBoardEpicIds() {
     try {
-      var ids = JSON.parse(localStorage.getItem(boardKey) || '[]');
+      var ids = JSON.parse(localStorage.getItem(boardEpicKey) || '[]');
       if (!Array.isArray(ids)) return [];
       return ids
         .map(function (x) { return parseInt(x, 10); })
         .filter(function (x) { return Number.isFinite(x) && x > 0; });
+    } catch (_) {
+      return [];
+    }
+  }
+
+  function getBoardTaskItems() {
+    try {
+      var arr = JSON.parse(localStorage.getItem(boardTaskKey) || '[]');
+      if (!Array.isArray(arr)) return [];
+      return arr
+        .filter(function (x) { return x && typeof x === 'object'; })
+        .map(function (x) {
+          return {
+            id: parseInt(x.id, 10),
+            epic_id: parseInt(x.epic_id, 10),
+            title: String(x.title || ''),
+            est_minutes: parseInt(x.est_minutes || 45, 10),
+            due_date: x.due_date || null,
+          };
+        })
+        .filter(function (x) { return x.id > 0 && x.epic_id > 0 && x.title; });
     } catch (_) {
       return [];
     }
@@ -69,7 +91,8 @@
 
   function mergeBoardTasksIntoToday(base) {
     var epicIds = getBoardEpicIds();
-    if (!epicIds.length) return Promise.resolve();
+    var boardTasks = getBoardTaskItems();
+    if (!epicIds.length && !boardTasks.length) return Promise.resolve();
 
     var list = document.querySelector('.task-list');
     if (!list) return Promise.resolve();
@@ -79,6 +102,14 @@
         .map(function (el) { return parseInt(el.getAttribute('data-task-id') || '0', 10); })
         .filter(function (id) { return Number.isFinite(id) && id > 0; })
     );
+
+    var added = 0;
+    boardTasks.forEach(function (task) {
+      if (existingTaskIds.has(task.id)) return;
+      list.insertBefore(renderTaskItem(task, true), list.firstChild);
+      existingTaskIds.add(task.id);
+      added += 1;
+    });
 
     var requests = epicIds.map(function (epicId) {
       return Promise.all([
@@ -94,7 +125,6 @@
     });
 
     return Promise.all(requests).then(function (groups) {
-      var added = 0;
       var placeholderAdded = 0;
       groups.forEach(function (group) {
         var tasks = group.tasks || [];

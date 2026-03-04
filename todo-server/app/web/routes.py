@@ -62,6 +62,19 @@ def page_today(request: Request, db: Session = Depends(get_db)):
 def page_epics(request: Request, db: Session = Depends(get_db)):
     """Epic 列表页 + 创建表单。"""
     epics = db.query(Epic).order_by(Epic.created_at.desc()).all()
+    epic_ids = [e.id for e in epics]
+    tasks_by_epic: dict[int, list[dict]] = {eid: [] for eid in epic_ids}
+    if epic_ids:
+        tasks = db.query(Task).filter(Task.epic_id.in_(epic_ids)).order_by(Task.id.asc()).all()
+        for t in tasks:
+            tasks_by_epic.setdefault(t.epic_id, []).append({
+                "id": t.id,
+                "title": t.title,
+                "status": t.status,
+                "est_minutes": t.est_minutes,
+                "due_date": t.due_date.isoformat() if t.due_date else None,
+            })
+
     epic_dicts = [
         {
             "id": e.id,
@@ -69,6 +82,7 @@ def page_epics(request: Request, db: Session = Depends(get_db)):
             "description": e.description,
             "due_date": e.due_date.isoformat() if e.due_date else None,
             "progress": getattr(e, "progress", 0.0),
+            "tasks": tasks_by_epic.get(e.id, []),
         }
         for e in epics
     ]

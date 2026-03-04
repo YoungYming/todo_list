@@ -782,6 +782,43 @@ body {
   font-weight: 600;
   white-space: nowrap;
 }
+.subepic-list {
+  margin-top: var(--space-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.subepic-card {
+  border: 1px dashed var(--border-default);
+  border-radius: var(--radius-sm);
+  padding: 8px;
+  background: #fff;
+  cursor: grab;
+}
+.subepic-card__title {
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.subepic-card__meta {
+  font-size: var(--text-xs);
+  color: var(--text-secondary);
+}
+.subepic-empty {
+  font-size: var(--text-xs);
+  color: var(--text-tertiary);
+  padding: 6px 4px;
+}
+.board-epic-group {
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: var(--space-2);
+  background: #fff;
+}
+.board-epic-group__title {
+  font-size: var(--text-sm);
+  font-weight: 700;
+  margin-bottom: var(--space-2);
+}
 .kanban-drop.drag-over { background: var(--accent-muted); }
 
 .kanban-side {
