@@ -1,0 +1,76 @@
+{% extends "base.html" %}
+{% block title %}{{ epic.title }} - Todo Server{% endblock %}
+{% block content %}
+<a href="/app/epics" class="back-link">← 返回 Epic 列表</a>
+
+<header class="page-header">
+  <h1 class="page-header__title">{{ epic.title }}</h1>
+  <p class="page-header__meta">
+    进度 {{ (epic.progress * 100) | round(0) }}%
+    {% if epic.due_date %} · 截止 {{ epic.due_date }}{% endif %}
+  </p>
+</header>
+
+{% if epic.description %}
+<pre class="epic-description">{{ epic.description }}</pre>
+{% endif %}
+
+<div class="card">
+  <div class="card__header">子任务</div>
+  <ul class="task-list" id="task-list">
+    {% for t in tasks %}
+    <li class="task-item">
+      <div class="task-item__body">
+        <h3 class="task-item__title">{{ t.title }}</h3>
+        <div class="task-item__meta">
+          <span>{{ t.est_minutes }} 分钟</span>
+          <span class="task-item__status task-item__status--{{ t.status }}">{{ t.status }}</span>
+        </div>
+      </div>
+    </li>
+    {% else %}
+    <li class="task-list__empty" id="task-list-empty">
+      暂无子任务。请先获取拆分候选并确认拆分。
+    </li>
+    {% endfor %}
+  </ul>
+</div>
+
+{% if not has_split_decision %}
+<section class="card section-split" id="section-split">
+  <div class="card__header">拆分</div>
+  <div class="card__body">
+    <p class="split-hint">获取拆分候选后，可编辑子任务列表并确认拆分。</p>
+    <div class="form-actions" style="margin-bottom: var(--space-4);">
+      <button type="button" class="btn btn--primary" id="btn-fetch-candidates">获取拆分候选</button>
+    </div>
+    <div id="candidates-area" hidden>
+      <div class="split-candidates" id="candidates-list"></div>
+      <div class="split-editor" id="split-editor" hidden>
+        <div class="card__header" style="font-size: var(--text-sm);">编辑后确认</div>
+        <ul class="split-task-editor" id="split-task-editor"></ul>
+        <div class="form-actions" style="margin-top: var(--space-4);">
+          <button type="button" class="btn btn--primary" id="btn-submit-split">确认拆分</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+{% else %}
+<div class="card">
+  <div class="card__body">
+    <p class="text-muted">已有拆分决策，不可重复提交。</p>
+  </div>
+</div>
+{% endif %}
+
+<div class="link-bar">
+  <a href="/docs">API 文档</a>
+  <a href="/app/epics">Epic 列表</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>window.EPIC_DETAIL = { epicId: {{ epic_id }}, hasSplitDecision: {{ 'true' if has_split_decision else 'false' }} };</script>
+<script src="/static/epic_detail.js?v=20260304-1"></script>
+{% endblock %}

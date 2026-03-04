@@ -47,6 +47,26 @@
     return li;
   }
 
+  function renderEpicPlaceholderItem(epic) {
+    var li = document.createElement('li');
+    li.className = 'task-item task-item--from-board';
+    li.setAttribute('data-epic-id', String(epic.id));
+    li.setAttribute('data-board-placeholder', '1');
+    li.innerHTML =
+      '<div class="task-item__body">' +
+        '<h3 class="task-item__title">' +
+          (epic.title || ('Epic #' + epic.id)) +
+          '<span class="task-item__badge">来自白板</span>' +
+        '</h3>' +
+        '<div class="task-item__meta">' +
+          '<span>该 Epic 还没有可执行子任务，请先拆分</span>' +
+          (epic.due_date ? '<span class="task-item__due">截止 ' + epic.due_date + '</span>' : '') +
+        '</div>' +
+      '</div>' +
+      '<a class="btn btn--secondary" href="/app/epics/' + epic.id + '">去拆分</a>';
+    return li;
+  }
+
   function mergeBoardTasksIntoToday(base) {
     var epicIds = getBoardEpicIds();
     if (!epicIds.length) return Promise.resolve();
@@ -61,27 +81,46 @@
     );
 
     var requests = epicIds.map(function (epicId) {
-      return fetch(base + '/api/epics/' + epicId + '/tasks', { credentials: 'same-origin' })
-        .then(function (res) { return res.ok ? res.json() : []; })
-        .catch(function () { return []; });
+      return Promise.all([
+        fetch(base + '/api/epics/' + epicId + '/tasks', { credentials: 'same-origin' })
+          .then(function (res) { return res.ok ? res.json() : []; })
+          .catch(function () { return []; }),
+        fetch(base + '/api/epics/' + epicId, { credentials: 'same-origin' })
+          .then(function (res) { return res.ok ? res.json() : { id: epicId, title: 'Epic #' + epicId }; })
+          .catch(function () { return { id: epicId, title: 'Epic #' + epicId }; })
+      ]).then(function (arr) {
+        return { tasks: arr[0] || [], epic: arr[1] || { id: epicId, title: 'Epic #' + epicId } };
+      });
     });
 
     return Promise.all(requests).then(function (groups) {
       var added = 0;
-      groups.forEach(function (tasks) {
-        (tasks || []).forEach(function (task) {
+      var placeholderAdded = 0;
+      groups.forEach(function (group) {
+        var tasks = group.tasks || [];
+        var epic = group.epic || {};
+        var before = added;
+        tasks.forEach(function (task) {
           if (!task || task.status === 'done') return;
           if (existingTaskIds.has(task.id)) return;
           list.insertBefore(renderTaskItem(task, true), list.firstChild);
           existingTaskIds.add(task.id);
           added += 1;
         });
+        if (added === before) {
+          var hasPlaceholder = list.querySelector('[data-board-placeholder="1"][data-epic-id="' + epic.id + '"]');
+          if (!hasPlaceholder) {
+            list.insertBefore(renderEpicPlaceholderItem(epic), list.firstChild);
+            placeholderAdded += 1;
+          }
+        }
       });
-      if (added > 0) {
+      if (added > 0 || placeholderAdded > 0) {
         var empty = list.querySelector('.task-list__empty');
         if (empty) empty.remove();
-        log('merged board tasks ->', added);
       }
+      if (added > 0) log('merged board tasks ->', added);
+      if (placeholderAdded > 0) log('merged board placeholders ->', placeholderAdded);
     });
   }
 
