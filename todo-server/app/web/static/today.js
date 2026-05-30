@@ -13,147 +13,6 @@
     else alert(msg);
   }
 
-  var boardEpicKey = 'todo_today_board_epics';
-  var boardTaskKey = 'todo_today_board_tasks';
-
-  function getBoardEpicIds() {
-    try {
-      var ids = JSON.parse(localStorage.getItem(boardEpicKey) || '[]');
-      if (!Array.isArray(ids)) return [];
-      return ids
-        .map(function (x) { return parseInt(x, 10); })
-        .filter(function (x) { return Number.isFinite(x) && x > 0; });
-    } catch (_) {
-      return [];
-    }
-  }
-
-  function getBoardTaskItems() {
-    try {
-      var arr = JSON.parse(localStorage.getItem(boardTaskKey) || '[]');
-      if (!Array.isArray(arr)) return [];
-      return arr
-        .filter(function (x) { return x && typeof x === 'object'; })
-        .map(function (x) {
-          return {
-            id: parseInt(x.id, 10),
-            epic_id: parseInt(x.epic_id, 10),
-            title: String(x.title || ''),
-            est_minutes: parseInt(x.est_minutes || 45, 10),
-            due_date: x.due_date || null,
-          };
-        })
-        .filter(function (x) { return x.id > 0 && x.epic_id > 0 && x.title; });
-    } catch (_) {
-      return [];
-    }
-  }
-
-  function renderTaskItem(task, fromBoard) {
-    var li = document.createElement('li');
-    li.className = 'task-item task-item--from-board';
-    li.setAttribute('data-task-id', String(task.id));
-    li.setAttribute('data-epic-id', String(task.epic_id));
-    li.innerHTML =
-      '<div class="task-item__body">' +
-        '<h3 class="task-item__title">' +
-          task.title +
-          (fromBoard ? '<span class="task-item__badge">来自白板</span>' : '') +
-        '</h3>' +
-        '<div class="task-item__meta">' +
-          '<span>' + task.est_minutes + ' 分钟</span>' +
-          (task.due_date ? '<span class="task-item__due">截止 ' + task.due_date + '</span>' : '') +
-        '</div>' +
-      '</div>' +
-      '<button type="button" class="btn btn--success btn-complete" data-task-id="' + task.id + '" data-title="' + task.title + '">完成</button>';
-    return li;
-  }
-
-  function renderEpicPlaceholderItem(epic) {
-    var li = document.createElement('li');
-    li.className = 'task-item task-item--from-board';
-    li.setAttribute('data-epic-id', String(epic.id));
-    li.setAttribute('data-board-placeholder', '1');
-    li.innerHTML =
-      '<div class="task-item__body">' +
-        '<h3 class="task-item__title">' +
-          (epic.title || ('Epic #' + epic.id)) +
-          '<span class="task-item__badge">来自白板</span>' +
-        '</h3>' +
-        '<div class="task-item__meta">' +
-          '<span>该 Epic 还没有可执行子任务，请先拆分</span>' +
-          (epic.due_date ? '<span class="task-item__due">截止 ' + epic.due_date + '</span>' : '') +
-        '</div>' +
-      '</div>' +
-      '<a class="btn btn--secondary" href="/app/epics/' + epic.id + '">去拆分</a>';
-    return li;
-  }
-
-  function mergeBoardTasksIntoToday(base) {
-    var epicIds = getBoardEpicIds();
-    var boardTasks = getBoardTaskItems();
-    if (!epicIds.length && !boardTasks.length) return Promise.resolve();
-
-    var list = document.querySelector('.task-list');
-    if (!list) return Promise.resolve();
-
-    var existingTaskIds = new Set(
-      Array.prototype.slice.call(document.querySelectorAll('.task-item[data-task-id]'))
-        .map(function (el) { return parseInt(el.getAttribute('data-task-id') || '0', 10); })
-        .filter(function (id) { return Number.isFinite(id) && id > 0; })
-    );
-
-    var added = 0;
-    boardTasks.forEach(function (task) {
-      if (existingTaskIds.has(task.id)) return;
-      list.insertBefore(renderTaskItem(task, true), list.firstChild);
-      existingTaskIds.add(task.id);
-      added += 1;
-    });
-
-    var requests = epicIds.map(function (epicId) {
-      return Promise.all([
-        fetch(base + '/api/epics/' + epicId + '/tasks', { credentials: 'same-origin' })
-          .then(function (res) { return res.ok ? res.json() : []; })
-          .catch(function () { return []; }),
-        fetch(base + '/api/epics/' + epicId, { credentials: 'same-origin' })
-          .then(function (res) { return res.ok ? res.json() : { id: epicId, title: 'Epic #' + epicId }; })
-          .catch(function () { return { id: epicId, title: 'Epic #' + epicId }; })
-      ]).then(function (arr) {
-        return { tasks: arr[0] || [], epic: arr[1] || { id: epicId, title: 'Epic #' + epicId } };
-      });
-    });
-
-    return Promise.all(requests).then(function (groups) {
-      var placeholderAdded = 0;
-      groups.forEach(function (group) {
-        var tasks = group.tasks || [];
-        var epic = group.epic || {};
-        var before = added;
-        tasks.forEach(function (task) {
-          if (!task || task.status === 'done') return;
-          if (existingTaskIds.has(task.id)) return;
-          list.insertBefore(renderTaskItem(task, true), list.firstChild);
-          existingTaskIds.add(task.id);
-          added += 1;
-        });
-        if (added === before) {
-          var hasPlaceholder = list.querySelector('[data-board-placeholder="1"][data-epic-id="' + epic.id + '"]');
-          if (!hasPlaceholder) {
-            list.insertBefore(renderEpicPlaceholderItem(epic), list.firstChild);
-            placeholderAdded += 1;
-          }
-        }
-      });
-      if (added > 0 || placeholderAdded > 0) {
-        var empty = list.querySelector('.task-list__empty');
-        if (empty) empty.remove();
-      }
-      if (added > 0) log('merged board tasks ->', added);
-      if (placeholderAdded > 0) log('merged board placeholders ->', placeholderAdded);
-    });
-  }
-
   function init() {
     if (__todayBound) return;
     __todayBound = true;
@@ -279,21 +138,12 @@
     // 初始化时强制关闭弹窗，避免浏览器恢复旧 UI 状态导致 taskId 丢失
     sanitizeModalState();
 
-    function bindCompleteButtons() {
-      var btns = document.querySelectorAll('.btn-complete');
-      btns.forEach(function (btn) {
-        if (btn.dataset.boundComplete === '1') return;
-        btn.dataset.boundComplete = '1';
-        btn.addEventListener('click', function () {
-          openModal(this.getAttribute('data-task-id'), this.getAttribute('data-title'));
-        });
+    // 完成按钮
+    var btns = document.querySelectorAll('.btn-complete');
+    btns.forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        openModal(this.getAttribute('data-task-id'), this.getAttribute('data-title'));
       });
-    }
-
-    // 先把白板任务同步进“今日待办”，再绑定完成按钮
-    var base = (typeof window.API_BASE !== 'undefined' ? window.API_BASE : '') || '';
-    mergeBoardTasksIntoToday(base).finally(function () {
-      bindCompleteButtons();
     });
 
     // 取消、遮罩、ESC
