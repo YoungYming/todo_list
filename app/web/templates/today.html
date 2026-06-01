@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}今日待办 - Todo Server{% endblock %}
+{% block content %}
+{% include "partials/_today.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>window.TODAY_DATA = {{ today_json | safe }};</script>
+<script src="/static/today.js?v=20260530-5"></script>
+{% endblock %}

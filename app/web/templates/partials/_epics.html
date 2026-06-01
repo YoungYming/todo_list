@@ -1,0 +1,164 @@
+<header class="page-header">
+  <p class="page-header__eyebrow">Project board</p>
+  <h1 class="page-header__title">Epic 看板</h1>
+  <p class="page-header__meta">管理长期目标，拖拽卡片到白板规划今日重点</p>
+</header>
+
+<section class="epics-top-panels">
+  <section class="section-create">
+    <div class="card">
+      <div class="card__header">创建 Epic</div>
+      <div class="card__body">
+        <form id="form-create-epic">
+          <div class="form-group">
+            <label class="form-group__label" for="epic-title">标题</label>
+            <input type="text" id="epic-title" name="title" class="form-group__input" required placeholder="给这个大任务起个名字" />
+          </div>
+          <div class="form-group">
+            <label class="form-group__label" for="epic-description">描述</label>
+            <textarea id="epic-description" name="description" class="form-group__textarea" rows="3" placeholder="描述目标、背景或交付物…"></textarea>
+          </div>
+          <div class="form-group">
+            <label class="form-group__label" for="epic-due_date">截止日</label>
+            <input type="date" id="epic-due_date" name="due_date" class="form-group__input" />
+          </div>
+          <div class="form-group">
+            <label class="form-group__label" for="epic-priority">优先级 (1–5)</label>
+            <input type="number" id="epic-priority" name="priority" class="form-group__input" min="1" max="5" value="3" />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">创建 Epic</button>
+            <button type="button" class="btn btn--secondary" id="btn-open-ingest" title="上传图片/文档，用大模型识别并拆解任务">识别图片/文件拆解</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  <section class="card board-card">
+    <div class="card__header">今日需完成白板</div>
+    <div class="card__body">
+      <div class="kanban-col board-zone" data-col="board" id="board-zone">
+        <div class="kanban-side kanban-side--right">移出白板</div>
+        <div id="today-board" class="kanban-drop"></div>
+      </div>
+    </div>
+  </section>
+</section>
+
+<section class="kanban" id="epic-kanban">
+  <div class="kanban-col" data-col="in_progress">
+    <div class="kanban-col__head">
+      <h3>进行中</h3>
+      <div class="kanban-col__tools" data-col-tools="in_progress">
+        <span data-role="selected-count"></span>
+        <button class="btn btn--small btn--secondary" data-action="select-visible">全选</button>
+        <button class="btn btn--small btn--secondary" data-action="clear-selected">清空</button>
+        <button class="btn btn--small btn--danger" data-action="delete-selected">删除</button>
+      </div>
+    </div>
+    <div class="kanban-side kanban-side--left">今日需做</div>
+    <div class="kanban-side kanban-side--right">删除记录</div>
+    <div class="kanban-drop" id="col-in-progress"></div>
+  </div>
+  <div class="kanban-col" data-col="done">
+    <div class="kanban-col__head">
+      <h3>已完成</h3>
+      <div class="kanban-col__tools" data-col-tools="done">
+        <span data-role="selected-count"></span>
+        <button class="btn btn--small btn--secondary" data-action="select-visible">全选</button>
+        <button class="btn btn--small btn--secondary" data-action="clear-selected">清空</button>
+        <button class="btn btn--small btn--danger" data-action="delete-selected">删除</button>
+      </div>
+    </div>
+    <div class="kanban-side kanban-side--left">今日需做</div>
+    <div class="kanban-side kanban-side--right">删除记录</div>
+    <div class="kanban-drop" id="col-done"></div>
+  </div>
+  <div class="kanban-col" data-col="overdue">
+    <div class="kanban-col__head">
+      <h3>已过期未完成</h3>
+      <div class="kanban-col__tools" data-col-tools="overdue">
+        <span data-role="selected-count"></span>
+        <button class="btn btn--small btn--secondary" data-action="select-visible">全选</button>
+        <button class="btn btn--small btn--secondary" data-action="clear-selected">清空</button>
+        <button class="btn btn--small btn--danger" data-action="delete-selected">删除</button>
+      </div>
+    </div>
+    <div class="kanban-side kanban-side--left">今日需做</div>
+    <div class="kanban-side kanban-side--right">删除记录</div>
+    <div class="kanban-drop" id="col-overdue"></div>
+  </div>
+</section>
+
+<div id="epic-action-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="epic-action-title">
+  <div class="modal-overlay__backdrop" id="epic-action-backdrop" aria-hidden="true"></div>
+  <div class="modal">
+    <div class="modal__header">
+      <h2 id="epic-action-title" class="modal__title">Epic 操作确认</h2>
+      <p id="epic-action-subtitle" class="modal__subtitle"></p>
+    </div>
+    <div class="modal__body">
+      <form id="epic-action-form">
+        <input type="hidden" id="epic-action-id" />
+        <div class="form-group" id="epic-action-list-wrap" hidden>
+          <label class="form-group__label">包含的子任务</label>
+          <ul id="epic-action-list" class="epic-action-list"></ul>
+        </div>
+        <div class="form-group" id="epic-action-due-wrap" hidden>
+          <label class="form-group__label" for="epic-action-due">新的截止日期</label>
+          <input class="form-group__input" type="date" id="epic-action-due" />
+        </div>
+        <div class="form-group" id="epic-action-desc-wrap" hidden>
+          <label class="form-group__label" for="epic-action-desc">新的描述（可选）</label>
+          <textarea class="form-group__textarea" id="epic-action-desc" rows="3"></textarea>
+        </div>
+        <div class="form-group" id="epic-action-note-wrap" hidden>
+          <label class="form-group__label" for="epic-action-note">完成说明（可选）</label>
+          <input class="form-group__input" type="text" id="epic-action-note" />
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--secondary" id="epic-action-cancel">取消</button>
+          <button type="submit" class="btn btn--primary" id="epic-action-confirm">确认</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div id="ingest-modal" class="modal-overlay" hidden role="dialog" aria-modal="true" aria-labelledby="ingest-title">
+  <div class="modal-overlay__backdrop" id="ingest-backdrop" aria-hidden="true"></div>
+  <div class="modal modal--wide">
+    <div class="modal__header">
+      <h2 id="ingest-title" class="modal__title">识别图片/文件拆解任务</h2>
+      <p class="modal__subtitle">上传图片（jpg/png/webp）或文档（pdf/docx/txt），大模型识别后给出可编辑的子任务清单。</p>
+    </div>
+    <div class="modal__body">
+      <div class="ingest-upload">
+        <input type="file" id="ingest-file" accept="image/*,.pdf,.docx,.txt,.md" />
+        <button type="button" class="btn btn--primary" id="ingest-run">开始识别</button>
+      </div>
+      <div id="ingest-status" class="ingest-status" hidden></div>
+
+      <div id="ingest-result" hidden>
+        <div class="form-group">
+          <label class="form-group__label" for="ingest-epic-title">总任务标题</label>
+          <input type="text" id="ingest-epic-title" class="form-group__input" placeholder="总任务名" />
+        </div>
+        <div class="form-group">
+          <label class="form-group__label" for="ingest-epic-due">截止日（可选）</label>
+          <input type="date" id="ingest-epic-due" class="form-group__input" />
+        </div>
+        <div class="form-group">
+          <label class="form-group__label">子任务（点击可编辑，可增删）</label>
+          <ol id="ingest-task-list" class="ingest-task-list"></ol>
+          <button type="button" class="btn btn--small btn--secondary" id="ingest-add-task">＋ 添加一条</button>
+        </div>
+      </div>
+    </div>
+    <div class="modal__actions">
+      <button type="button" class="btn btn--secondary" id="ingest-cancel">取消</button>
+      <button type="button" class="btn btn--primary" id="ingest-commit" hidden>确认创建 Epic</button>
+    </div>
+  </div>
+</div>

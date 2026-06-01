@@ -1,0 +1,42 @@
+<header class="page-header">
+  <p class="page-header__eyebrow">Daily focus</p>
+  <h1 class="page-header__title">今日待办</h1>
+  <p class="page-header__meta">{{ plan_date }} · 在可用时长内，专注完成最重要的事</p>
+  {% if selection_reason %}<p class="page-header__reason">{{ selection_reason }}</p>{% endif %}
+</header>
+
+<div class="stats-row">
+  <div class="stat-card">
+    <p class="stat-card__label">可用时长</p>
+    <p class="stat-card__value stat-card__value--accent">{{ available_minutes }}<span style="font-size:0.6em;font-family:var(--font-sans);font-weight:500;margin-left:4px;">分钟</span></p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__label">今日任务</p>
+    <p class="stat-card__value">{{ tasks | length }}</p>
+  </div>
+  <div class="stat-card">
+    <p class="stat-card__label">预估总计</p>
+    <p class="stat-card__value">{{ tasks | sum(attribute='est_minutes') }}<span style="font-size:0.6em;font-family:var(--font-sans);font-weight:500;margin-left:4px;">分钟</span></p>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card__header">任务列表</div>
+  <ul class="task-list">
+    {% for t in tasks %}
+    <li class="task-item" data-task-id="{{ t.id }}">
+      <div class="task-item__body">
+        <h3 class="task-item__title">{% if t.pinned %}<span class="task-item__pin" title="今日锁定">📌</span> {% endif %}{{ t.title }}</h3>
+        <div class="task-item__meta">
+          <span>{{ t.est_minutes }} 分钟</span>
+          {% if t.due_date %}<span class="task-item__due">截止 {{ t.due_date }}</span>{% endif %}
+          {% if t.pinned %}<span class="task-item__badge">今日锁定</span>{% endif %}
+        </div>
+      </div>
+      <button type="button" class="btn btn--success btn-complete" data-task-id="{{ t.id }}" data-title="{{ t.title }}">完成</button>
+    </li>
+    {% else %}
+    <li class="task-list__empty">暂无待办，或今日计划为空。<br>可在 Epic 看板中创建任务并完成拆分。</li>
+    {% endfor %}
+  </ul>
+</div>

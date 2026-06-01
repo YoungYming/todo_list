@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block title %}Epic 看板 - Todo Server{% endblock %}
+{% block body_class %}page-epics{% endblock %}
+{% block content %}
+{% include "partials/_epics.html" %}
+{% endblock %}
+
+{% block scripts %}
+<script>window.EPICS_DATA = {{ epics | tojson }};</script>
+<script src="/static/epic_detail.js?v=20260530-5"></script>
+<script src="/static/epics.js?v=20260530-5"></script>
+<script src="/static/ingest.js?v=20260530-5"></script>
+{% endblock %}

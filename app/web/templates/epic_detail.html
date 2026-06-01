@@ -1,0 +1,17 @@
+{% extends "base.html" %}
+{% block title %}{{ epic.title }} - Todo Server{% endblock %}
+{% block content %}
+<a href="/app" class="back-link">← 返回看板</a>
+
+{% include "partials/_epic_detail.html" %}
+
+<div class="link-bar">
+  <a href="/docs">API 文档</a>
+  <a href="/app">Epic 看板</a>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/epic_detail.js?v=20260530-5"></script>
+<script>window.initEpicDetail && window.initEpicDetail(document, { epicId: {{ epic_id }}, hasSplitDecision: {{ 'true' if has_split_decision else 'false' }} });</script>
+{% endblock %}
