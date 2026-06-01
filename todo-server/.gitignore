@@ -1,0 +1,19 @@
+# 环境
+.venv/
+venv/
+.env
+*.pyc
+__pycache__/
+.pytest_cache/
+.mypy_cache/
+
+# 本地数据（若 DATA_ROOT 指向项目内）
+data/
+*.db
+*.db-journal
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo

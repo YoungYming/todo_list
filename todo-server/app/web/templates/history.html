@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+{% block title %}历史任务 - Todo Server{% endblock %}
+{% block content %}
+<header class="page-header">
+  <p class="page-header__eyebrow">Activity log</p>
+  <h1 class="page-header__title">历史记录</h1>
+  <p class="page-header__meta">按日历回顾完成了什么，追踪你的节奏与产出</p>
+</header>
+
+<section class="history-layout">
+  <div class="card">
+    <div class="card__header">日历</div>
+    <div class="card__body">
+      <form method="get" action="/app/history" class="form-actions" style="margin-top:0;">
+        <input class="form-group__input" style="max-width:180px;" type="month" name="month" value="{{ month }}" />
+        <button class="btn btn--secondary" type="submit">切换月份</button>
+      </form>
+      <table class="history-calendar">
+        <thead>
+          <tr><th>一</th><th>二</th><th>三</th><th>四</th><th>五</th><th>六</th><th>日</th></tr>
+        </thead>
+        <tbody>
+          {% for row in calendar_rows %}
+          <tr>
+            {% for cell in row %}
+              {% if cell %}
+              <td class="history-calendar__cell {% if cell.date == focus_date %}is-active{% endif %}">
+                <a href="/app/history?month={{ month }}&selected_date={{ cell.date }}" class="history-calendar__link">
+                  <span>{{ cell.day }}</span>
+                  {% if cell.count > 0 %}<em>{{ cell.count }}项</em>{% endif %}
+                </a>
+              </td>
+              {% else %}
+              <td class="history-calendar__empty"></td>
+              {% endif %}
+            {% endfor %}
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card">
+    <div class="card__header">{{ focus_date }} 完成记录</div>
+    <ul class="task-list">
+      {% for x in selected_tasks %}
+      <li class="task-item">
+        <div class="task-item__body">
+          <h3 class="task-item__title">{{ x.task_title }}</h3>
+          <div class="task-item__meta">
+            <span>创建 {{ x.created_at }}</span>
+            <span>完成 {{ x.completed_at }}</span>
+            <span>{{ x.actual_minutes }} 分钟</span>
+          </div>
+        </div>
+        <a class="btn btn--secondary" href="/app/epics/{{ x.epic_id }}">查看父任务</a>
+      </li>
+      {% else %}
+      <li class="task-list__empty">这一天还没有完成记录。</li>
+      {% endfor %}
+    </ul>
+  </div>
+</section>
+{% endblock %}

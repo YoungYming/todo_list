@@ -1,0 +1,23 @@
+# Todo Server - 单容器部署，数据落盘 /srv/data
+# 应用端口仅内网访问，由 Nginx Proxy Manager 反代 80/443
+services:
+  todo-server:
+    build: .
+    container_name: todo-server
+    restart: unless-stopped
+    network_mode: host
+    # host 网络模式：容器可访问宿主机 127.0.0.1（用于 OpenClaw 本地 LLM 接口）
+    env_file:
+      - .env
+    environment:
+      - DATA_ROOT=/srv/data
+      # 可选：覆盖 .env 中变量
+      # - API_TOKEN=your-secret-token
+    volumes:
+      - /srv/data/todo-server:/srv/data/todo-server
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
